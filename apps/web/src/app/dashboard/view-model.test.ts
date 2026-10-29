@@ -1,0 +1,120 @@
+import { describe, expect, it } from 'vitest';
+import type { SourceRecord } from '../../server/graph/port';
+import type { SourceResponse } from '../../server/pipeline/result';
+import {
+  buildAnswerView,
+  buildSourceDetail,
+  buildUsage,
+  dashboardHref,
+  formatDate,
+  mergeLibrary,
+  resolveUser,
+  sourceHref,
+  toLibraryItem,
+} from './view-model';
+
+const record = (over: Partial<SourceRecord> = {}): SourceRecord => ({
+  id: 's1',
+  userId: 'demo',
+  url: 'https://example.com/a',
+  title: 'Article',
+  kind: 'web',
+  status: 'done',
+  savedAt: '2026-10-01T10:00:00.000Z',
+  readAt: null,
+  contentHash: 'h',
+  body: '',
+  newRatio: 0.42,
+  tldr: null,
+  ...over,
+});
+
+describe('resolveUser and links', () => {
+  it('defaults to demo and takes the first of a repeated param', () => {
+    expect(resolveUser(undefined)).toBe('demo');
+    expect(resolveUser('  ')).toBe('demo');
+    expect(resolveUser(['ann', 'bob'])).toBe('ann');
+  });
+
+  it('carries the user through every link, encoded', () => {
+    expect(dashboardHref('a b', '/ask')).toBe('/dashboard/ask?user=a%20b');
+    expect(sourceHref('u', 's/1')).toBe('/dashboard/source/s%2F1?user=u');
+  });
+});
+
+describe('mergeLibrary', () => {
+  it('merges the per-status lists newest first and tags read state', () => {
+    const items = mergeLibrary([
+      [record({ id: 'old', savedAt: '2026-09-01T00:00:00.000Z', readAt: '2026-09-02T00:00:00.000Z' })],
+      [record({ id: 'new', savedAt: '2026-10-05T00:00:00.000Z', status: 'pending' })],
+      [],
+    ]);
+    expect(items.map((i) => i.id)).toEqual(['new', 'old']);
+    expect(items.map((i) => i.read)).toEqual([false, true]);
+  });
+
+  it('shows a ratio only for checked sources, and falls back to the url for a title', () => {
+    expect(toLibraryItem(record()).percentNew).toBe(42);
+    expect(toLibraryItem(record({ status: 'partial' })).percentNew).toBe(42);
+    expect(toLibraryItem(record({ status: 'pending', newRatio: 0 })).newRatio).toBeNull();
+    expect(toLibraryItem(record({ status: 'blocked' })).percentNew).toBeNull();
+    expect(toLibraryItem(record({ title: '' })).title).toBe('https://example.com/a');
+  });
+});
+
+describe('buildSourceDetail', () => {
+  const res: SourceResponse = {
+    sourceId: 's1',
+    status: 'done',
+    title: 'Article',
+    url: 'https://example.com/a',
+    newRatio: 0.5,
+    tldr: null,
+    highlights: ['q'],
+    verdicts: [
+      { kind: 'new', text: 'A', claimId: 'c1' },
+      {
+        kind: 'repeat',
+        text: 'B again',
+        match: { claimId: 'c0', claimText: 'B', distance: 0.1, sourceId: 's0', sourceTitle: 'Old', sourceUrl: 'https://old', concepts: [] },
+      },
+      { kind: 'new', text: 'C', claimId: 'c2' },
+    ],
+  };
+
+  it('splits claims, counts them, and keeps where each repeat was first seen', () => {
+    const d = buildSourceDetail(res);
+    expect(d.newClaims.map((c) => c.text)).toEqual(['A', 'C']);
+    expect(d).toMatchObject({ newCount: 2, repeatCount: 1, percentNew: 50, highlights: ['q'] });
+    expect(d.repeats[0]).toEqual({ text: 'B again', originalText: 'B', sourceId: 's0', sourceTitle: 'Old', sourceUrl: 'https://old' });
+  });
+
+  it('has no ratio before the source is checked', () => {
+    expect(buildSourceDetail({ ...res, status: 'processing', verdicts: [] }).percentNew).toBeNull();
+  });
+});
+
+describe('buildUsage', () => {
+  it('measures against the plan allowance and caps at 100', () => {
+    expect(buildUsage({ plan: 'free', credits: 3 }, 15)).toMatchObject({ limit: 30, percentUsed: 50, credits: 3 });
+    expect(buildUsage({ plan: 'free', credits: 0 }, 99).percentUsed).toBe(100);
+    expect(buildUsage({ plan: 'pro', credits: 0 }, 0).limit).toBeGreaterThan(30);
+  });
+});
+
+describe('buildAnswerView', () => {
+  const c = (id: string) => ({ claimId: id, claimText: `claim ${id}`, distance: 0.1, sourceId: `s-${id}`, sourceTitle: id, sourceUrl: `https://e/${id}`, concepts: [] });
+  it('trims the answer and lists each cited claim once, in order', () => {
+    const v = buildAnswerView({ question: 'q', answer: ' Yes. ', citations: [c('b'), c('a'), c('b')] });
+    expect(v.answer).toBe('Yes.');
+    expect(v.citations.map((x) => x.claimId)).toEqual(['b', 'a']);
+    expect(v.citations[0]).toMatchObject({ sourceId: 's-b', text: 'claim b' });
+  });
+});
+
+describe('formatDate', () => {
+  it('formats in UTC and returns empty for garbage', () => {
+    expect(formatDate('2026-10-29T23:59:00.000Z')).toBe('Oct 29, 2026');
+    expect(formatDate('nope')).toBe('');
+  });
+});
