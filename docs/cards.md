@@ -104,3 +104,50 @@ Build:
 2. `tune-threshold.ts`: embeds `fixtures/seed/pairs.json`, prints the distance of every pair, and the threshold that maximises accuracy, with precision and recall. Then runs `demo.json`'s `x402-overlap` against the seeded `demo` user through `knownClaims` and prints per-sentence predicted vs labelled. Write the results and the chosen `NOVELTY_MAX_DIST` to `docs/threshold.md`.
 
 Done when: seed runs twice in a row with the same counts; `docs/threshold.md` exists with the numbers; on `x402-overlap` the chosen threshold gets at least 10 of 12 sentences right. Commit `G2: ...`, tag `g2`.
+
+## W1: API routes and the worker in the app
+
+Lane: product. Starts after G1, P2 and B1 are merged. Files: `apps/web/src/app/api/**`, `apps/web/src/server/deps.ts`, `apps/web/src/app/page.tsx` (paste page), `apps/web/src/app/api/_lib/**`.
+
+Build every route in `docs/api.md` except the two billing routes, which B1 owns. `deps.ts` builds the one `deps` object (TigerGraph graph, LLM profile, embed, quota from B1) lazily, once per process. Capture runs the quota check synchronously, so an over-limit capture returns `blocked` with a `checkoutUrl` at once. The page at `/` is a paste box (URL, title, text) that posts a `web` capture for the demo user and shows the SaveResult. Read `apps/web/node_modules/next/dist/docs/` for route handler conventions in Next.js 16 before writing them.
+
+Done when: with the worker running and TigerGraph seeded, a script `apps/web/scripts/api-smoke.ts` drives every route against `next dev` and checks status codes and shapes (including CORS preflight and the 401 without `x-user-id`); typecheck and tests pass. Commit `W1: ...`, tag `w1`.
+
+## B1: billing with Dodo Payments
+
+Lane: product. Starts after G1 is merged. Files: `apps/web/src/server/billing/**`, `apps/web/src/app/api/billing/**`, `apps/web/src/app/api/webhooks/dodo/**`, `apps/web/src/app/dev/checkout/**`. Read `docs/research/dodo.md` first.
+
+Build:
+
+1. `quota.ts`: `allow(userId)` and `consume(userId)`. Free: 30 saves per UTC month. Pro: 500. Past the allowance, a save spends one credit if `credits > 0`, else it is blocked. Use `graph.countSavesSince` and `graph.updateUser`.
+2. `dodo.ts`: a Dodo client in `test_mode` only (throw if `DODO_PAYMENTS_ENVIRONMENT` is anything else). `createCheckout(user, product)`: create the Dodo customer once (`metadata.user_id`) and store `dodo_customer_id`, then `checkoutSessions.create` with `DODO_PRO_PRODUCT_ID` or `DODO_CREDITS_PRODUCT_ID` and `return_url`.
+3. Dev checkout when `DODO_PAYMENTS_API_KEY` is unset: `createCheckout` returns `/dev/checkout?product=...&user=...`. That page shows the product and a "Pay (test)" button, which posts to a server action that builds the same event Dodo would send, signs it with `DODO_PAYMENTS_WEBHOOK_KEY` (a `whsec_` secret; `.env.example` has a generated dev one) using `standardwebhooks`, and POSTs it to `/api/webhooks/dodo`. The page says plainly that it is a local stand-in for Dodo test checkout.
+4. Webhook route: verify with `standardwebhooks` against `DODO_PAYMENTS_WEBHOOK_KEY`, reading the raw body. Find the user by `data.customer.customer_id` (fallback `data.metadata.user_id`). `subscription.active` and `subscription.renewed` set plan `pro`. `subscription.cancelled`, `subscription.expired` and `subscription.on_hold` set plan `free`. `payment.succeeded` for the credits product adds 200 credits. Each `webhook-id` is processed once (`WebhookEvent` vertex; add a `GraphPort`-free helper in billing that talks to TigerGraph through the existing client, or ask the lead). Then move the user's `blocked` sources back to `pending`.
+
+Done when: unit tests cover quota rules and webhook handling with locally signed payloads (good signature, bad signature, replayed id, credits pack, cancel); typecheck and tests pass. Commit `B1: ...`, tag `b1`.
+
+## X1: extension save, What's new to me, Learn next, quick note
+
+Lane: product. Can start now. Files: `apps/extension/**` only.
+
+Build a Chrome MV3 extension with WXT + React:
+
+1. Side panel entrypoint (`entrypoints/sidepanel/`), opened by the toolbar button. `Alt+S` command saves the current tab.
+2. Save: the background script injects a content script that runs `@mozilla/readability` on a clone of the document and returns `{ url, title, text, selection }`. The side panel posts it to `POST /api/capture` with `source: "extension"`, then polls per `docs/api.md`.
+3. Views, as tabs in the side panel: "What's new to me" (new claims highlighted, repeats greyed with "you read this in <title>" links, the TL;DR bullets and "why it matters"; under 20% new shows "nothing new" and the links; a collapsed "hidden as not new" list), "Learn next" (top 3 items with their unread sources as links), and a "Graph" tab placeholder that X2 fills.
+4. Quick note box: a textarea and a save button posting `source: "voice"` with no URL and `title: "Voice note"`. This is where Wispr Flow types.
+5. Blocked: show "Free limit reached", open `checkoutUrl` in a new tab, keep polling, and show a "Pro" badge from `GET /api/me` when it flips.
+6. Options: `apiBase` (default `http://localhost:3000`) and `userId` (default `demo`), stored in `chrome.storage.local`.
+7. `lib/api.ts` is the only module that calls fetch. `lib/api-types.ts` copies the types it needs from the server's `types.ts`.
+
+Done when: `pnpm --filter extension build` produces `.output/chrome-mv3` with a manifest that has `side_panel`, `commands`, the needed permissions (`activeTab`, `scripting`, `sidePanel`, `storage`) and host permission for `http://localhost:3000/*`; `pnpm --filter extension compile` passes; vitest tests cover the poll loop and the view model (repeat grouping, nothing-new rule) with a fake fetch. Commit `X1: ...`, tag `x1`.
+
+## X2: graph view
+
+Lane: product. Starts after X1. Files: `apps/extension/entrypoints/sidepanel/graph/**`.
+
+The Graph tab draws `GET /api/graph/:sourceId` with `react-force-graph-2d`: source, claims, concepts, projects, with REPEATS links and repeat claims in grey. Node labels on hover. Fits the side panel width. Done when compile, build and a view-model test pass. Commit `X2: ...`, tag `x2`.
+
+## D1: end-to-end check, demo reset, docs
+
+Lead-owned. `scripts/e2e.ts` runs the PRD's must-work list against the real stack (TigerGraph, `next dev`, worker, stub LLM): seed, save the overlap article, check repeats and TL;DR, learn next, hit the quota, pay through the dev checkout, see the plan flip and the save complete, save the voice note. `DEMO.md` and `README.md` explain setup, the hand-back steps, and what each sponsor's judges see.
