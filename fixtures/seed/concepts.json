@@ -1,0 +1,93 @@
+[
+  {
+    "name": "x402 batching",
+    "projects": [
+      "proj-x402-sentinel"
+    ]
+  },
+  {
+    "name": "facilitator model",
+    "projects": [
+      "proj-x402-sentinel"
+    ]
+  },
+  {
+    "name": "HTTP 402 payment protocol",
+    "projects": [
+      "proj-x402-sentinel"
+    ]
+  },
+  {
+    "name": "payment settlement",
+    "projects": [
+      "proj-x402-sentinel",
+      "proj-ribozome"
+    ]
+  },
+  {
+    "name": "agent payments",
+    "projects": [
+      "proj-x402-sentinel"
+    ]
+  },
+  {
+    "name": "ERC-4626",
+    "projects": [
+      "proj-ribozome"
+    ]
+  },
+  {
+    "name": "oracle pricing",
+    "projects": [
+      "proj-ribozome"
+    ]
+  },
+  {
+    "name": "slippage",
+    "projects": [
+      "proj-ribozome"
+    ]
+  },
+  {
+    "name": "yield vault strategies",
+    "projects": [
+      "proj-ribozome"
+    ]
+  },
+  {
+    "name": "share price accounting",
+    "projects": [
+      "proj-ribozome"
+    ]
+  },
+  {
+    "name": "HNSW index",
+    "projects": [
+      "proj-second-brain"
+    ]
+  },
+  {
+    "name": "vector search",
+    "projects": [
+      "proj-second-brain"
+    ]
+  },
+  {
+    "name": "graph database",
+    "projects": [
+      "proj-second-brain"
+    ]
+  },
+  {
+    "name": "claim extraction",
+    "projects": [
+      "proj-second-brain"
+    ]
+  },
+  {
+    "name": "sentence embeddings",
+    "projects": [
+      "proj-second-brain"
+    ]
+  }
+]

@@ -24,7 +24,7 @@ Next.js 16 has breaking changes. Read the guide in `apps/web/node_modules/next/d
 
 ## Autopilot rules
 
-- One card per session. Do only that card, run its "Done when" checks, then `git commit -m "<ID>: ..."` and `git tag <id>`, and stop.
+- One card per session. Do only that card, run its "Done when" checks, then `git commit -m "<ID>: ..."` and `git tag -m "<ID>" <id>` (tags are signed here and need a message), and stop.
 - Two strikes. If a check fails, fix it once. If it fails again, write `BLOCKED.md` (what failed, logs, best guess) and stop. Never loop.
 - Tests never call Claude or Dodo. Dodo test mode only; live keys are forbidden.
 - Build only what the card lists. Put other ideas in `IDEAS.md`.

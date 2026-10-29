@@ -1,0 +1,314 @@
+[
+  {
+    "id": "seed-01",
+    "url": "https://example.com/second-brain-seed/x402-revives-http-402",
+    "title": "x402 Revives the HTTP 402 Payment Required Status Code",
+    "read": true,
+    "concepts": [
+      "HTTP 402 payment protocol",
+      "agent payments"
+    ],
+    "body": "The HTTP 402 Payment Required status code was reserved in the original HTTP specification but stayed unused for decades. Coinbase introduced the x402 protocol in 2025 to turn that reserved status code into a working payment standard. An x402 server answers an unpaid request with a 402 response that lists what the client must pay. The client signs a payment payload and retries the same request with that payload attached. The x402 protocol lets software agents pay for web resources without accounts, API keys, or subscriptions. Payments in x402 are settled in stablecoins, with USDC as the most common asset. Because x402 payments need no card network, a single call can cost a fraction of one cent."
+  },
+  {
+    "id": "seed-02",
+    "url": "https://example.com/second-brain-seed/x402-request-response-anatomy",
+    "title": "Anatomy of an x402 Request and Response",
+    "read": true,
+    "concepts": [
+      "HTTP 402 payment protocol"
+    ],
+    "body": "An x402 response with status 402 carries a JSON body containing an accepts list of payment requirements. Each payment requirement names a network, an asset, a payTo address, and a maximum amount required. The client puts the signed payment payload in the X-PAYMENT request header, encoded as base64. The resource server forwards the X-PAYMENT header to a facilitator before it returns any paid content. After successful settlement, the server returns the resource together with an X-PAYMENT-RESPONSE header. The maxTimeoutSeconds field in a requirement limits how long a signed payment stays valid for settlement. On EVM chains, the exact scheme signs an EIP-3009 transferWithAuthorization message for the USDC token."
+  },
+  {
+    "id": "seed-03",
+    "url": "https://example.com/second-brain-seed/what-an-x402-facilitator-does",
+    "title": "What an x402 Facilitator Does",
+    "read": true,
+    "concepts": [
+      "facilitator model"
+    ],
+    "body": "A facilitator is a service that verifies and settles x402 payments on behalf of resource servers. Facilitators let a resource server accept crypto payments without running blockchain nodes or holding gas funds. The facilitator checks the payment signature, the amount, the recipient, and the validity window before approving. After verification, the facilitator broadcasts the transfer transaction to the blockchain and waits for confirmation. The facilitator pays the network gas fee, so the paying client never needs a native gas token. Coinbase operates a hosted facilitator that supports USDC settlement on the Base network. Any party can run an independent facilitator because the x402 specification defines the facilitator interface openly."
+  },
+  {
+    "id": "seed-04",
+    "url": "https://example.com/second-brain-seed/facilitator-verify-and-settle-api",
+    "title": "The Facilitator HTTP Interface: Verify and Settle",
+    "read": true,
+    "concepts": [
+      "facilitator model",
+      "payment settlement"
+    ],
+    "body": "A standard x402 facilitator exposes a verify endpoint and a settle endpoint over HTTP. The verify endpoint checks a payment payload against payment requirements without sending any transaction on chain. The settle endpoint submits the authorized transfer to the blockchain and returns the transaction hash. Resource servers often call verify first, serve the content, and call settle afterwards to reduce response latency. Calling settle after serving content risks delivering a resource when the on-chain transfer later fails. A facilitator reports which payment schemes and networks it supports through a supported endpoint. Resource servers can use middleware libraries that wrap the verify and settle calls around a protected route."
+  },
+  {
+    "id": "seed-05",
+    "url": "https://example.com/second-brain-seed/trust-and-fees-facilitator-model",
+    "title": "Trust and Fees in the Facilitator Model",
+    "read": true,
+    "concepts": [
+      "facilitator model"
+    ],
+    "body": "The facilitator model separates content serving from payment settlement, so each side can specialize. A facilitator cannot redirect funds, because the signed payment authorization fixes the recipient address and amount. A dishonest facilitator can still refuse to settle a payment or delay settlement for a long time. Resource servers reduce facilitator risk by supporting more than one facilitator and falling back between them. Some facilitators charge a small per-transaction fee, while others subsidize settlement to attract developers. Self-hosting a facilitator removes third-party dependence but requires managing keys, gas balances, and chain connectivity. Monitoring facilitator latency and failure rates helps operators decide which facilitator should receive traffic."
+  },
+  {
+    "id": "seed-06",
+    "url": "https://example.com/second-brain-seed/batching-micropayments-x402",
+    "title": "Batching Micropayments in x402",
+    "read": true,
+    "concepts": [
+      "x402 batching"
+    ],
+    "body": "Settling every x402 payment as a separate on-chain transaction makes gas costs dominate very small payments. Batching groups many small payments into a single settlement transaction to spread the fixed cost. A batching router collects signed payments from many requests and submits them together at regular intervals. Batching cuts per-call overhead because one blockchain transaction replaces dozens or hundreds of separate transfers. Batched settlement delays final payment confirmation, so the seller carries credit risk during the batching window. Operators typically trigger a batch when it reaches a size limit or when a timer expires. Batching works best for high-volume agent traffic where many calls go to the same seller."
+  },
+  {
+    "id": "seed-07",
+    "url": "https://example.com/second-brain-seed/latency-vs-cost-batching-agent-payments",
+    "title": "Latency Versus Cost When Batching Agent Payments",
+    "read": true,
+    "concepts": [
+      "x402 batching",
+      "agent payments"
+    ],
+    "body": "Larger batches lower the average gas cost per payment but increase the time before sellers receive funds. A short batching window keeps settlement fast but gives up part of the savings from aggregation. Sellers who cannot tolerate credit exposure can require payments to be settled before serving each response. A router can set different batching policies for different sellers based on call volume and trust level. Failed transactions inside a batch must be retried or split, otherwise one bad payment can block the others. Per-call overhead includes signature verification, a network round trip to the facilitator, and a share of the gas fee. Measuring the real overhead per call should come before choosing a batch size."
+  },
+  {
+    "id": "seed-08",
+    "url": "https://example.com/second-brain-seed/settlement-of-x402-payments-on-base",
+    "title": "Settlement of x402 Payments on Base",
+    "read": true,
+    "concepts": [
+      "payment settlement"
+    ],
+    "body": "Base is an Ethereum layer-two network developed by Coinbase, and it is the main network for x402 payments. Transaction fees on Base are usually a small fraction of a cent, which suits micropayments. USDC on Base implements EIP-3009, which lets a holder authorize a transfer with an off-chain signature. A relayer submits the signed authorization to the token contract, which then moves the funds to the recipient. Each authorization includes a random nonce, so the token contract rejects any attempt to replay it. Base Sepolia is the test network where developers try x402 flows with free test tokens. Settlement is complete only after the transaction has been included in a block on the chain."
+  },
+  {
+    "id": "seed-09",
+    "url": "https://example.com/second-brain-seed/budgets-spending-limits-agent-payments",
+    "title": "Budgets and Spending Limits for Agent Payments",
+    "read": true,
+    "concepts": [
+      "agent payments",
+      "x402 batching"
+    ],
+    "body": "An autonomous agent that can pay for APIs needs a hard spending limit to prevent runaway costs. A common control is a per-request cap that rejects any payment requirement above a configured amount. Daily and monthly budgets protect an agent wallet from loops that call a paid endpoint repeatedly. A monitoring router can log every payment requirement, amount, and destination for later review. Allowlists of approved seller domains stop an agent from paying unknown or malicious endpoints. Agents should keep only small balances in the hot wallet that signs x402 payments. Alerting on unusual spending patterns catches compromised agent keys before large amounts are lost."
+  },
+  {
+    "id": "seed-10",
+    "url": "https://example.com/second-brain-seed/settlement-finality-and-reorgs-x402",
+    "title": "Settlement Finality and Reorgs for x402 Payments",
+    "read": false,
+    "concepts": [
+      "payment settlement"
+    ],
+    "body": "Finality is the point at which a blockchain transaction can no longer be reversed. Optimistic rollups such as Base post their transaction data to Ethereum and inherit final security from it. A soft confirmation from the Base sequencer is fast but is weaker than finality on Ethereum. Sellers of low-value content usually accept a soft confirmation instead of waiting for stronger finality. Sellers delivering high-value goods may wait for the transaction to be included on Ethereum before delivery. Settlement monitoring should track dropped transactions, replaced transactions, and confirmation delays. A payment record should store the transaction hash so that disputed settlements can be audited later."
+  },
+  {
+    "id": "seed-11",
+    "url": "https://example.com/second-brain-seed/erc-4626-tokenized-vault-standard",
+    "title": "ERC-4626 Explained: The Tokenized Vault Standard",
+    "read": false,
+    "concepts": [
+      "ERC-4626"
+    ],
+    "body": "ERC-4626 is the Ethereum standard for tokenized vaults that hold one underlying ERC-20 asset. A vault that follows ERC-4626 issues share tokens that represent a proportional claim on the vault assets. The standard extends ERC-20, so vault shares can be transferred and used in other protocols like any token. The asset function returns the address of the underlying token that the vault accepts and holds. The totalAssets function reports the total amount of underlying tokens managed by the vault. Standard interfaces let wallets and aggregators integrate many yield vaults with a single piece of code. The ERC-4626 standard became final in 2022 and replaced many incompatible custom vault interfaces."
+  },
+  {
+    "id": "seed-12",
+    "url": "https://example.com/second-brain-seed/erc-4626-deposit-mint-withdraw-redeem",
+    "title": "ERC-4626 Deposit, Mint, Withdraw, and Redeem",
+    "read": false,
+    "concepts": [
+      "ERC-4626",
+      "share price accounting"
+    ],
+    "body": "The deposit function of an ERC-4626 vault takes an amount of assets and mints the matching shares. The mint function lets a user choose an exact number of shares and pays whatever assets are required. The withdraw function lets a user choose an exact amount of assets and burns the required shares. The redeem function burns an exact number of shares and sends back the corresponding assets. Preview functions let integrators simulate deposits and withdrawals without changing any vault state. ERC-4626 requires rounding in favor of the vault, so that rounding never lets users extract free value. An empty vault is exposed to a donation attack, which virtual shares or a decimals offset can mitigate."
+  },
+  {
+    "id": "seed-13",
+    "url": "https://example.com/second-brain-seed/chainlink-price-feeds-for-defi-vaults",
+    "title": "Chainlink Price Feeds for DeFi Vaults",
+    "read": true,
+    "concepts": [
+      "oracle pricing"
+    ],
+    "body": "Chainlink price feeds aggregate prices from many independent node operators into a single on-chain value. A consumer contract reads the latest price by calling the latestRoundData function on a feed contract. Chainlink feeds update when the price moves past a deviation threshold or when a heartbeat interval expires. The Chainlink ETH/USD feed on Ethereum mainnet updates after a 0.5 percent move or a one-hour heartbeat. Vaults use oracle prices to value assets that are held in different tokens. Each feed reports its own decimals value, and contracts must scale prices correctly before using them. Oracle prices lag the market slightly, which creates a window where on-chain valuations differ from spot prices."
+  },
+  {
+    "id": "seed-14",
+    "url": "https://example.com/second-brain-seed/oracle-manipulation-and-twap-defenses",
+    "title": "Oracle Manipulation and TWAP Defenses",
+    "read": true,
+    "concepts": [
+      "oracle pricing"
+    ],
+    "body": "Reading the spot price of a single AMM pool as an oracle lets an attacker manipulate that price within one transaction. Flash loans give an attacker enough temporary capital to move a pool price far from the true market price. The 2022 Mango Markets exploit used a manipulated oracle price to borrow about 110 million dollars of assets. A time-weighted average price smooths out short spikes by averaging a pool price across many blocks. Uniswap v3 stores cumulative tick observations that contracts can use to compute a TWAP over any recent window. A longer TWAP window raises the cost of manipulation but makes the oracle react slower to real price moves. Combining a Chainlink feed with a TWAP cross-check lets a protocol detect large divergences between two price sources."
+  },
+  {
+    "id": "seed-15",
+    "url": "https://example.com/second-brain-seed/stale-prices-and-circuit-breakers",
+    "title": "Stale Prices and Circuit Breakers for Oracles",
+    "read": true,
+    "concepts": [
+      "oracle pricing"
+    ],
+    "body": "A stale oracle price is one that has not been updated within its expected heartbeat interval. Contracts can compare the updatedAt timestamp from latestRoundData against the current block timestamp to detect staleness. A vault should reject deposits and withdrawals when the oracle price is older than an allowed maximum age. Layer-two networks need a check on the sequencer uptime feed so that prices are not trusted right after downtime. Circuit breakers pause vault operations when an oracle price moves by more than a set percentage in one update. Setting minimum and maximum bounds on accepted prices limits damage from a malfunctioning feed. Governance should be able to switch to a backup oracle if the primary feed fails."
+  },
+  {
+    "id": "seed-16",
+    "url": "https://example.com/second-brain-seed/slippage-in-automated-market-makers",
+    "title": "Slippage in Automated Market Makers",
+    "read": true,
+    "concepts": [
+      "slippage"
+    ],
+    "body": "Slippage is the difference between the price a trader expects and the price that the trade actually executes at. Constant product market makers such as Uniswap v2 keep the product of the two token reserves fixed. Price impact grows as the trade size becomes larger relative to the reserves of the pool. Deep liquidity pools absorb large trades with less slippage than shallow pools. A trader sets a slippage tolerance, and the transaction reverts when the output falls below the minimum amount. A tolerance that is too tight causes frequent reverts, while one that is too loose invites exploitation. Stablecoin pools use curves that flatten the price near parity, which lowers slippage for like-valued assets."
+  },
+  {
+    "id": "seed-17",
+    "url": "https://example.com/second-brain-seed/sandwich-attacks-and-mev",
+    "title": "Sandwich Attacks and MEV",
+    "read": true,
+    "concepts": [
+      "slippage"
+    ],
+    "body": "A sandwich attack places a buy order before a victim swap and a sell order immediately after. The attacker profits from the price movement that the victim trade creates within the pool. Wide slippage tolerance gives a sandwich attacker more room to extract value from a victim swap. Private transaction relays such as Flashbots Protect keep swaps out of the public mempool. Maximal extractable value is the profit that block builders and searchers earn by ordering transactions. Splitting a large order into smaller pieces over time reduces the profit available to a sandwich attacker. Intent-based trading systems let solvers compete to fill an order at the best price."
+  },
+  {
+    "id": "seed-18",
+    "url": "https://example.com/second-brain-seed/controlling-slippage-in-vault-rebalancing",
+    "title": "Controlling Slippage in Vault Rebalancing",
+    "read": true,
+    "concepts": [
+      "slippage",
+      "yield vault strategies"
+    ],
+    "body": "A yield vault that swaps reward tokens into its base asset loses value to slippage on every swap. Vault strategies should compute a minimum output from an oracle price instead of from the pool price. Routing a swap through an aggregator can find deeper liquidity and reduce price impact. Limiting the size of each harvest swap keeps price impact within an acceptable bound. Vaults often restrict the harvest function to trusted keepers because anyone could otherwise sandwich the swap. Simulating a swap before execution gives an estimate of expected slippage for the current pool state. Logging realized slippage for each rebalance helps detect strategies whose costs exceed their yield."
+  },
+  {
+    "id": "seed-19",
+    "url": "https://example.com/second-brain-seed/auto-compounding-yield-vault-strategies",
+    "title": "Auto-Compounding Yield Vault Strategies",
+    "read": true,
+    "concepts": [
+      "yield vault strategies"
+    ],
+    "body": "An auto-compounding vault harvests reward tokens, swaps them into the deposit asset, and reinvests the proceeds. Compounding raises the effective annual yield above the simple reward rate shown as APR. Each harvest costs gas, so the best harvest frequency balances compounding benefits against transaction costs. Larger vaults can harvest more often because the gas cost is shared across more depositors. A strategy contract holds the vault funds and interacts with external lending markets or liquidity pools. Vault managers can move funds between strategies when another venue offers a better risk-adjusted return. Smart contract risk in every integrated protocol adds to the total risk of holding vault shares."
+  },
+  {
+    "id": "seed-20",
+    "url": "https://example.com/second-brain-seed/performance-fees-and-high-water-marks",
+    "title": "Performance Fees and High-Water Marks",
+    "read": true,
+    "concepts": [
+      "share price accounting"
+    ],
+    "body": "A vault share price equals total vault assets divided by total shares outstanding. The share price rises over time as the strategy earns yield for depositors. A performance fee takes a percentage of profit, and Yearn vaults historically charged 20 percent. A high-water mark means the vault charges performance fees only on gains above the previous peak share price. Without a high-water mark, depositors could pay repeated fees on the same recovered losses. A management fee charges a small annual percentage of assets regardless of vault performance. Accounting for fees by minting new shares to the manager dilutes depositors without moving any assets. Depositors compare vaults by net yield after all fees rather than by the gross strategy return."
+  },
+  {
+    "id": "seed-21",
+    "url": "https://example.com/second-brain-seed/how-hnsw-indexes-work",
+    "title": "How HNSW Indexes Work",
+    "read": true,
+    "concepts": [
+      "HNSW index",
+      "vector search"
+    ],
+    "body": "HNSW stands for Hierarchical Navigable Small World and is a graph-based index for approximate nearest neighbor search. Yury Malkov and Dmitry Yashunin introduced the HNSW algorithm in a paper first published in 2016. The index stores vectors as nodes in a multilayer graph where each node links to nearby vectors. The top layers of an HNSW graph are sparse and contain long links that cover large distances. A search enters at the top layer and greedily moves to closer nodes before dropping down a layer. The bottom layer contains every vector and is searched most thoroughly to find the final neighbors. Each node is assigned a maximum layer at random, with higher layers becoming exponentially less likely. Empirically, HNSW query time grows roughly logarithmically with the number of indexed vectors."
+  },
+  {
+    "id": "seed-22",
+    "url": "https://example.com/second-brain-seed/tuning-hnsw-m-efconstruction-efsearch",
+    "title": "Tuning HNSW: M, efConstruction, and efSearch",
+    "read": true,
+    "concepts": [
+      "HNSW index"
+    ],
+    "body": "The parameter M sets the maximum number of links that each node keeps in the HNSW graph. A larger M improves recall on hard datasets but increases memory use and index build time. The efConstruction parameter sets the size of the candidate list used while inserting new vectors. A higher efConstruction produces a better graph at the cost of slower index construction. The efSearch parameter sets the candidate list size at query time and controls the recall and latency tradeoff. Raising efSearch above the requested number of neighbors improves recall but slows every query. HNSW indexes keep their graph in memory, so large collections need substantial RAM. Deleting vectors from an HNSW graph is difficult, so many systems mark nodes as deleted and rebuild later."
+  },
+  {
+    "id": "seed-23",
+    "url": "https://example.com/second-brain-seed/cosine-similarity-for-semantic-search",
+    "title": "Cosine Similarity for Semantic Search",
+    "read": true,
+    "concepts": [
+      "vector search",
+      "sentence embeddings"
+    ],
+    "body": "Cosine similarity measures the angle between two vectors and ignores their lengths. Cosine distance equals one minus cosine similarity, so identical directions have a distance of zero. When vectors are normalized to unit length, the dot product equals the cosine similarity. Exact nearest neighbor search compares the query against every stored vector and scales linearly with collection size. Approximate nearest neighbor indexes trade a small loss in accuracy for much faster queries. Vector search finds items by meaning, so a query can match text that shares no keywords with the query. A distance threshold decides whether two vectors count as a match or as unrelated items. Choosing the threshold requires labelled examples because the right value depends on the embedding model."
+  },
+  {
+    "id": "seed-24",
+    "url": "https://example.com/second-brain-seed/sentence-embeddings-all-minilm-l6-v2",
+    "title": "Sentence Embeddings with all-MiniLM-L6-v2",
+    "read": true,
+    "concepts": [
+      "sentence embeddings"
+    ],
+    "body": "The all-MiniLM-L6-v2 model maps sentences and short paragraphs to vectors with 384 dimensions. The all-MiniLM-L6-v2 model uses six transformer layers, which makes it much faster than larger embedding models. Sentence Transformers trained the all-MiniLM-L6-v2 model on over one billion sentence pairs using contrastive learning. The all-MiniLM-L6-v2 model truncates input text beyond 256 word pieces, so long documents must be split first. The transformers.js library runs all-MiniLM-L6-v2 in Node or in the browser without a Python server. Embedding one sentence at a time yields more precise matches than embedding a whole article. Paraphrases of one fact usually land close together in the embedding space, while different facts land farther apart. Embeddings from all-MiniLM-L6-v2 capture topic strongly, so different facts on one topic can still look similar."
+  },
+  {
+    "id": "seed-25",
+    "url": "https://example.com/second-brain-seed/property-graph-databases",
+    "title": "Property Graph Databases",
+    "read": true,
+    "concepts": [
+      "graph database"
+    ],
+    "body": "A property graph stores data as vertices and edges, and both can carry key-value properties. Graph databases answer multi-hop questions by following edges instead of joining large tables. Native graph storage keeps direct references between connected records, so traversal cost depends on local neighborhood size. Typical graph use cases include fraud detection, recommendation engines, and knowledge graphs. Edges in a property graph have a type and a direction, such as READ or ABOUT. Graph query languages such as Cypher and GSQL describe patterns to match along paths. A graph model suits questions about relationships, like which concepts a project depends on."
+  },
+  {
+    "id": "seed-26",
+    "url": "https://example.com/second-brain-seed/tigergraph-gsql-and-vector-search",
+    "title": "TigerGraph GSQL and Vector Search",
+    "read": false,
+    "concepts": [
+      "graph database",
+      "vector search"
+    ],
+    "body": "TigerGraph is a distributed graph database that runs queries written in the GSQL language. GSQL queries traverse the graph in parallel and can accumulate results in variables called accumulators. TigerGraph added native vector search in version 4.2, built on an HNSW index. A GSQL query can combine vector similarity search with graph traversal in a single statement. TigerGraph Community Edition can run in a Docker container on a single laptop. Installed GSQL queries are compiled once and then called through the REST++ endpoint. Newly inserted vectors may take a short time to appear in the vector index."
+  },
+  {
+    "id": "seed-27",
+    "url": "https://example.com/second-brain-seed/extracting-claims-from-articles",
+    "title": "Extracting Claims from Articles",
+    "read": true,
+    "concepts": [
+      "claim extraction"
+    ],
+    "body": "A claim is a single checkable statement that expresses one fact or one idea. Claim extraction splits an article into atomic statements that can be compared across documents. Good claims are self-contained, so each one makes sense without the sentences around it. Replacing pronouns with the entities they refer to makes extracted claims easier to match. Language models can split text into claims, but their output varies between runs. A deterministic sentence splitter gives repeatable claims for tests, though it ignores compound sentences. Claims that combine several facts match poorly, because the embedding blends the meaning of every fact. Short claims of one fact each produce cleaner similarity scores than long sentences."
+  },
+  {
+    "id": "seed-28",
+    "url": "https://example.com/second-brain-seed/detecting-repeated-ideas-across-documents",
+    "title": "Detecting Repeated Ideas Across Documents",
+    "read": true,
+    "concepts": [
+      "claim extraction",
+      "sentence embeddings"
+    ],
+    "body": "Near-duplicate detection compares new claims against stored claims and flags those that fall within a distance threshold. Reworded sentences that state the same fact should score as close, even when they share few words. A threshold set too high merges different facts, while one set too low misses real paraphrases. Hard negatives are different facts on the same topic, and they are the cases that decide threshold quality. Evaluating a threshold needs labelled pairs of paraphrases and non-paraphrases from the real domain. Precision measures how many flagged repeats are true repeats, and recall measures how many true repeats were found. Users trust a novelty feature more when it shows which earlier source contained the repeated idea. Comparing only against material the user has read avoids calling a claim known when it was merely saved."
+  },
+  {
+    "id": "seed-29",
+    "url": "https://example.com/second-brain-seed/approximate-vs-exact-nearest-neighbor-search",
+    "title": "Approximate Versus Exact Nearest Neighbor Search",
+    "read": true,
+    "concepts": [
+      "vector search",
+      "HNSW index"
+    ],
+    "body": "Recall at k is the fraction of the true k nearest neighbors that an approximate search returns. Brute-force search guarantees perfect recall but becomes slow when a collection reaches millions of vectors. For a few thousand vectors, exact search finishes in milliseconds, so an approximate index adds little value. Benchmarks such as ann-benchmarks compare indexes by plotting recall against queries per second. HNSW usually reaches recall above 95 percent with settings that remain much faster than brute force. Filtering by metadata during approximate search can lower recall when the filter excludes most candidates. Candidate-set filtering restricts the search to vectors that belong to one user, which supports private per-user search. Index memory use depends on vector dimension, link count, and the number of stored vectors."
+  },
+  {
+    "id": "seed-30",
+    "url": "https://example.com/second-brain-seed/building-a-personal-knowledge-graph",
+    "title": "Building a Personal Knowledge Graph",
+    "read": true,
+    "concepts": [
+      "graph database",
+      "claim extraction"
+    ],
+    "body": "A personal knowledge graph links the things a person has read to the ideas and projects behind them. Concept vertices connect many claims across sources, which reveals the topics a reader keeps returning to. A traversal from a project to its concepts shows which required topics have no read source yet. Storing a read date on each source lets the graph answer what was learned and when. Repeated claims become links to the earlier source instead of new duplicate vertices. A graph view of one saved article makes new and repeated ideas visible at a glance. Exporting the graph as markdown notes with wikilinks keeps the data in files the user owns."
+  }
+]

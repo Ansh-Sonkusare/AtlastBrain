@@ -1,0 +1,152 @@
+{
+  "x402-overlap": {
+    "id": "x402-overlap",
+    "url": "https://example.com/demo/how-autonomous-agents-pay-for-apis-with-x402",
+    "title": "How Autonomous Agents Pay for APIs With x402",
+    "body": "With x402, an autonomous program can buy access to a web resource and skip signup, keys, and recurring plans. The signed payment payload travels in the X-PAYMENT header of the retried request, in base64 encoding. The x402 protocol also supports payments on the Solana network in addition to EVM chains. Because the facilitator covers the blockchain gas fee, the paying client does not have to hold a native gas token. Verification through a facilitator checks a payload against the requirements and never broadcasts an on-chain transaction. Even an untrustworthy facilitator is able to withhold settlement or stall a payment for an extended period. Payment requirements may include an outputSchema field that describes the format of the response from the paid endpoint. Per-call overhead falls under batching, since a single blockchain transaction takes the place of many individual transfers. If one payment inside a batch fails, the batch must be retried or split so the remaining payments are not blocked. Every authorization carries a random nonce, which stops the token contract from accepting a replayed copy. The x402 Bazaar is a discovery catalog where agents can find paid endpoints to call. A typical safeguard is a cap per request that refuses any payment requirement exceeding a configured amount.",
+    "labels": [
+      {
+        "sentence": "With x402, an autonomous program can buy access to a web resource and skip signup, keys, and recurring plans.",
+        "known": true,
+        "matches": "seed-01",
+        "matchSentence": "The x402 protocol lets software agents pay for web resources without accounts, API keys, or subscriptions."
+      },
+      {
+        "sentence": "The signed payment payload travels in the X-PAYMENT header of the retried request, in base64 encoding.",
+        "known": true,
+        "matches": "seed-02",
+        "matchSentence": "The client puts the signed payment payload in the X-PAYMENT request header, encoded as base64."
+      },
+      {
+        "sentence": "The x402 protocol also supports payments on the Solana network in addition to EVM chains.",
+        "known": false,
+        "matches": null,
+        "matchSentence": null
+      },
+      {
+        "sentence": "Because the facilitator covers the blockchain gas fee, the paying client does not have to hold a native gas token.",
+        "known": true,
+        "matches": "seed-03",
+        "matchSentence": "The facilitator pays the network gas fee, so the paying client never needs a native gas token."
+      },
+      {
+        "sentence": "Verification through a facilitator checks a payload against the requirements and never broadcasts an on-chain transaction.",
+        "known": true,
+        "matches": "seed-04",
+        "matchSentence": "The verify endpoint checks a payment payload against payment requirements without sending any transaction on chain."
+      },
+      {
+        "sentence": "Even an untrustworthy facilitator is able to withhold settlement or stall a payment for an extended period.",
+        "known": true,
+        "matches": "seed-05",
+        "matchSentence": "A dishonest facilitator can still refuse to settle a payment or delay settlement for a long time."
+      },
+      {
+        "sentence": "Payment requirements may include an outputSchema field that describes the format of the response from the paid endpoint.",
+        "known": false,
+        "matches": null,
+        "matchSentence": null
+      },
+      {
+        "sentence": "Per-call overhead falls under batching, since a single blockchain transaction takes the place of many individual transfers.",
+        "known": true,
+        "matches": "seed-06",
+        "matchSentence": "Batching cuts per-call overhead because one blockchain transaction replaces dozens or hundreds of separate transfers."
+      },
+      {
+        "sentence": "If one payment inside a batch fails, the batch must be retried or split so the remaining payments are not blocked.",
+        "known": true,
+        "matches": "seed-07",
+        "matchSentence": "Failed transactions inside a batch must be retried or split, otherwise one bad payment can block the others."
+      },
+      {
+        "sentence": "Every authorization carries a random nonce, which stops the token contract from accepting a replayed copy.",
+        "known": true,
+        "matches": "seed-08",
+        "matchSentence": "Each authorization includes a random nonce, so the token contract rejects any attempt to replay it."
+      },
+      {
+        "sentence": "The x402 Bazaar is a discovery catalog where agents can find paid endpoints to call.",
+        "known": false,
+        "matches": null,
+        "matchSentence": null
+      },
+      {
+        "sentence": "A typical safeguard is a cap per request that refuses any payment requirement exceeding a configured amount.",
+        "known": true,
+        "matches": "seed-09",
+        "matchSentence": "A common control is a per-request cap that rejects any payment requirement above a configured amount."
+      }
+    ]
+  },
+  "voice-note": {
+    "id": "voice-note",
+    "url": "voice://quick-note/2026-10-29-batching",
+    "title": "Voice note on router batching",
+    "body": "Decided to use batching for the router because per-call overhead was too high.",
+    "labels": [
+      {
+        "sentence": "Decided to use batching for the router because per-call overhead was too high.",
+        "known": false,
+        "matches": null,
+        "matchSentence": null
+      }
+    ]
+  },
+  "fresh-topic": {
+    "id": "fresh-topic",
+    "url": "https://example.com/demo/crdts-for-local-first-apps",
+    "title": "CRDTs for Local-First Apps",
+    "body": "A conflict-free replicated data type is a data structure that merges concurrent edits from different replicas without coordination. CRDTs guarantee that replicas converge to the same state once every replica has received every update. Local-first software keeps the primary copy of user data on the user device and syncs the data in the background. Martin Kleppmann and coauthors described the local-first idea in a 2019 essay from the Ink and Switch research lab. Automerge and Yjs are open-source libraries that implement CRDTs for collaborative documents. A grow-only counter CRDT stores one count per replica and computes the total by summing all counts. Text CRDTs assign a unique identifier to each character so that concurrent inserts keep a consistent order. Deleted items in many CRDTs remain as tombstones, which makes document history grow over time.",
+    "labels": [
+      {
+        "sentence": "A conflict-free replicated data type is a data structure that merges concurrent edits from different replicas without coordination.",
+        "known": false,
+        "matches": null,
+        "matchSentence": null
+      },
+      {
+        "sentence": "CRDTs guarantee that replicas converge to the same state once every replica has received every update.",
+        "known": false,
+        "matches": null,
+        "matchSentence": null
+      },
+      {
+        "sentence": "Local-first software keeps the primary copy of user data on the user device and syncs the data in the background.",
+        "known": false,
+        "matches": null,
+        "matchSentence": null
+      },
+      {
+        "sentence": "Martin Kleppmann and coauthors described the local-first idea in a 2019 essay from the Ink and Switch research lab.",
+        "known": false,
+        "matches": null,
+        "matchSentence": null
+      },
+      {
+        "sentence": "Automerge and Yjs are open-source libraries that implement CRDTs for collaborative documents.",
+        "known": false,
+        "matches": null,
+        "matchSentence": null
+      },
+      {
+        "sentence": "A grow-only counter CRDT stores one count per replica and computes the total by summing all counts.",
+        "known": false,
+        "matches": null,
+        "matchSentence": null
+      },
+      {
+        "sentence": "Text CRDTs assign a unique identifier to each character so that concurrent inserts keep a consistent order.",
+        "known": false,
+        "matches": null,
+        "matchSentence": null
+      },
+      {
+        "sentence": "Deleted items in many CRDTs remain as tombstones, which makes document history grow over time.",
+        "known": false,
+        "matches": null,
+        "matchSentence": null
+      }
+    ]
+  }
+}

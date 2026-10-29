@@ -1,0 +1,17 @@
+[
+  {
+    "id": "proj-x402-sentinel",
+    "name": "x402 Sentinel",
+    "description": "A monitoring router that sits between AI agents and x402 HTTP 402 payment endpoints. It watches every payment requirement and batches small payments to cut per-call overhead. It also tracks facilitators and settlement outcomes so operators can see where money goes."
+  },
+  {
+    "id": "proj-ribozome",
+    "name": "Ribozome",
+    "description": "A DeFi yield vault product that pools deposits and routes them into yield strategies. Vault shares follow the ERC-4626 tokenized vault standard. Safe operation depends on reliable oracle pricing and tight control of slippage."
+  },
+  {
+    "id": "proj-second-brain",
+    "name": "Second Brain",
+    "description": "A knowledge-graph app that reads what a user saves and keeps only what is new to that user. It splits articles into claims and embeds each claim for vector search with an HNSW index. A graph database links claims, concepts, and projects."
+  }
+]
