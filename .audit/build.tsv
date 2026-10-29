@@ -1,3 +1,5 @@
 ts	phase	decision	why	evidence	result
 2026-10-29T06:36:33Z	frame	build the MVP locally with git worktrees and tags, no GitHub remote or PRs	the dir is not a repo and pushing is outward-facing; the PRD itself uses worktree+tag flow	git init	open
 2026-10-29T06:36:33Z	frame	add a deterministic stub LLM profile; real MiniLM embeddings	no Ollama, no GPU, no Anthropic key on this box; novelty check still runs on real vectors	env survey: ollama not found, nvidia-smi fails, no ANTHROPIC env	open
+2026-10-29T06:45:32Z	tigergraph	proved candidate_set vectorSearch scoped by a READ traversal on CE 4.2.5	riskiest unknown; every lane depends on it	/tmp/tgtest/q.gsql: u1 sees c1 dist 0, u2 sees c2 dist 0.006	VERIFIED
+2026-10-29T06:45:32Z	merge	merged P1 (LLM providers, cost guard, embeddings)	lead re-ran checks on main	merge commit; 17 tests pass; tsc clean	VERIFIED

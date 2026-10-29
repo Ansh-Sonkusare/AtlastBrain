@@ -46,3 +46,61 @@ Done when:
 - Tests with the memory graph and stub LLM, using `fixtures/seed/` if present: seed 3 read articles, then process an article that paraphrases two of their sentences and adds two new ones. Assert 2 repeats with the right source titles, 2 new claims, `newRatio` 0.5, TL;DR bullets equal to the new claims only. Assert a duplicate URL capture returns the same source id. Assert a blocked quota leaves status `blocked`. Assert a throwing LLM leaves status `partial`.
 - `tsc --noEmit` and `pnpm --filter web test` pass.
 - Commit `P2: ...`, tag `p2`.
+
+Addendum to P2 from the lead: saving and reading are separate. `processSource(deps, sourceId, { markRead })` marks the source READ only when `markRead` is true. Captures from the extension, voice, and web default to `markRead: true` (the user is on the page and reads the delta). The seed loader passes `false` for unread articles. The novelty check only matches claims from READ sources.
+
+## G1: TigerGraph schema, queries, and the TigerGraph GraphPort
+
+Lane: graph. Files: `graph/**`, `apps/web/src/server/graph/tigergraph.ts`, `apps/web/src/server/graph/tigergraph.test.ts`, `apps/web/scripts/graph-load.ts`.
+
+Facts the lead already proved on this container (see `docs/research/tigergraph.md` for the rest):
+
+- `POST http://127.0.0.1:14240/gsql/v1/statements` with basic auth `tigergraph:tigergraph` and `Content-Type: text/plain` runs a multi-statement GSQL script (`CREATE GRAPH`, `USE GRAPH`, schema change jobs, `CREATE QUERY`, `INSTALL QUERY`). Each schema change job takes about 30 s. `INSTALL QUERY` takes about 30 s, so install all queries in one `INSTALL QUERY q1, q2, ...` statement.
+- RESTPP needs no auth: `POST /restpp/graph/<graph>` upserts vertices and edges; a vector attribute goes in as `"embedding": {"value": [floats]}`.
+- Call an installed query with `POST /restpp/query/<graph>/<query>` and a JSON body. A `VERTEX<User>` parameter is passed as `{"id": "...", "type": "User"}`.
+- `GET /restpp/vector/status/<graph>/<VertexType>/<attr>` returns `"status": "Ready_for_query"` when the HNSW index has caught up, and `"Rebuild_processing"` before that.
+- This query shape works on 4.2.5 and scopes the vector search to the user's own read claims:
+
+```
+CREATE OR REPLACE QUERY probe_known(VERTEX<PUser> u, LIST<FLOAT> v, FLOAT max_dist) SYNTAX v3 {
+  MapAccum<VERTEX, FLOAT> @@dist;
+  start = {u};
+  mine = SELECT c FROM (s:start)-[:PREAD]->(src:PSource)-[:PMAKES]->(c:PClaim);
+  near = vectorSearch({PClaim.embedding}, v, 5, {candidate_set: mine, distance_map: @@dist});
+  known = SELECT h FROM (h:near) WHERE @@dist.get(h) < max_dist;
+  PRINT known, @@dist;
+}
+```
+
+- Cosine distance is `1 - cosine similarity`. A probe graph `Probe` exists on the container. Drop it.
+
+Build:
+
+1. `graph/schema.gsql`: graph `SecondBrain` with local types. Vertices: `User(id, email, plan, credits INT, dodo_customer_id)`, `Source(id, user_id, url, title, kind, status, saved_at, read_at, content_hash, body, new_ratio DOUBLE, tldr)` (times are ISO strings, `tldr` is JSON text), `Claim(id, text, first_seen)` + vector `embedding` 384 COSINE, `Highlight(id, text, created_at)`, `Concept(id, user_id, name, summary)` + vector `embedding`, `Project(id, user_id, name, description)` + vector `embedding`, `WebhookEvent(id, received_at)` (for idempotent webhooks). Use `primary_id_as_attribute="true"`. Edges, all directed with reverse edges: `OWNS` (User → Source | User → Project | User → Concept), `READ` (User → Source, attribute `read_at`), `MAKES` and `REPEATS` (Source → Claim), `ABOUT` (Claim → Concept), `RELEVANT_TO` (Concept → Project), `HIGHLIGHTS` (Highlight → Source). Concept ids are per user: `<userId>::<lowercased name>`.
+2. `graph/queries/*.gsql`, one query per file, all installed together:
+   - `known_claims(u, claim_vec, max_dist, k)`: the PRD novelty query. Candidate set is claims MADE by sources the user READ. Prints each known claim with its distance, the source that MADE it (id, title, url), and its concept names.
+   - `learn_next(u, lim)`: concepts RELEVANT_TO a project the user OWNS, where no claim ABOUT the concept comes (via MAKES or REPEATS) from a source the user READ. For each, the user's owned unread sources whose claims are ABOUT it. Rank by number of unread sources, then name. Return at most `lim`.
+   - `neighborhood(u, src)`: the source, its MAKES and REPEATS claims, their concepts, and those concepts' projects, as nodes and links. Check that the source is owned by `u`, else return nothing.
+   - `source_claims(u, src)`: claims MADE by the source, and claims it REPEATS with the source that originally MADE each and the distance not needed.
+   - `count_saves_since(u, since)`, `list_concepts(u)`, `list_projects(u)` (with embeddings: use `PRINT ... WITH VECTOR` or an accumulator), `pending_sources(lim)`, `delete_user(u)` (deletes the user and every vertex it owns, plus claims made by those sources and highlights).
+3. `apps/web/scripts/graph-load.ts` (`pnpm --filter web graph:load [--reset]`): idempotent. Creates the graph and schema if missing, `--reset` drops and recreates. Always (re)creates and installs all queries. Prints timings.
+4. `apps/web/src/server/graph/tigergraph.ts`: `createTigerGraph(config)` implementing every `GraphPort` method with RESTPP upserts, built-in vertex GETs, and the installed queries. Config from env `TG_URL` (default `http://127.0.0.1:14240`), `TG_GRAPH` (`SecondBrain`), `TG_USER`, `TG_PASSWORD`. Also export `waitForVectorIndex(timeoutMs)` that polls the status endpoint for Claim, Concept and Project.
+5. Do not use the deprecated `{"id"...}` form for SET parameters without checking it; test every query through the client.
+
+Done when:
+
+- `pnpm --filter web graph:load --reset` succeeds from scratch, and a second `pnpm --filter web graph:load` run succeeds without `--reset`.
+- `apps/web/src/server/graph/tigergraph.test.ts` runs against the live container (skip with a clear message when `TG_URL` is unreachable), uses a unique user id per run and deletes it at the end, and covers: two users with similar claims where `knownClaims` for user A never returns user B's claim; a claim from a saved but unread source is not known; `learnNext` returns a concept with no read source and lists the unread source; `neighborhood` returns MAKES, REPEATS, ABOUT and RELEVANT_TO links; `sourceClaims` returns repeats with the original source title; `countSavesSince`; `deleteUser` leaves nothing.
+- `pnpm --filter web typecheck` and `pnpm --filter web test` pass.
+- Commit `G1: ...`, tag `g1`.
+
+## G2: seed loader and threshold tuning
+
+Lane: graph. Starts after G1 and P2 are merged. Files: `apps/web/scripts/seed.ts`, `apps/web/scripts/tune-threshold.ts`, `docs/threshold.md`.
+
+Build:
+
+1. `pnpm --filter web seed [--user demo]`: deletes the user, then loads `fixtures/seed/projects.json`, `concepts.json` (with RELEVANT_TO edges) and `articles.json` for user `demo` (email `demo@example.com`, plan free, credits 0). Each article goes through the real pipeline (`capture` + `processSource`) with `LLM_PROFILE=stub`, `markRead` from the fixture, except that concept links use the fixture's `concepts` field instead of the stub linker. Saved dates are spread over the previous 60 days, so they do not count against this month's quota. Waits for the vector index at the end. Prints counts.
+2. `tune-threshold.ts`: embeds `fixtures/seed/pairs.json`, prints the distance of every pair, and the threshold that maximises accuracy, with precision and recall. Then runs `demo.json`'s `x402-overlap` against the seeded `demo` user through `knownClaims` and prints per-sentence predicted vs labelled. Write the results and the chosen `NOVELTY_MAX_DIST` to `docs/threshold.md`.
+
+Done when: seed runs twice in a row with the same counts; `docs/threshold.md` exists with the numbers; on `x402-overlap` the chosen threshold gets at least 10 of 12 sentences right. Commit `G2: ...`, tag `g2`.
