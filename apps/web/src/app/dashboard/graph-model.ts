@@ -3,7 +3,7 @@ import type { GraphNode, Neighborhood } from '../../server/types';
 export const NODE_COLORS: Record<GraphNode['type'], string> = {
   Source: '#2f5bea',
   Claim: '#12a57a',
-  Concept: '#1f8a4c',
+  Concept: '#d99a00',
   Project: '#8e3fc4',
 };
 
