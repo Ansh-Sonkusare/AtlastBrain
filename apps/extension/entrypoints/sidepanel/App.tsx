@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { NewToMe } from './NewToMe';
 import { LearnNext } from './LearnNext';
 import { QuickNote } from './QuickNote';
+import { GraphView } from './graph/GraphView';
 import { useSave } from './useSave';
 
 type Tab = 'new' | 'learn' | 'graph';
@@ -50,11 +51,7 @@ export function App() {
         </section>
       )}
       {tab === 'learn' && <LearnNext refreshKey={state.phase === 'done' ? state.result.sourceId : ''} />}
-      {tab === 'graph' && (
-        <section>
-          <p className="muted">The graph view is coming soon.</p>
-        </section>
-      )}
+      {tab === 'graph' && <GraphView sourceId={state.phase === 'done' ? state.result.sourceId : ''} />}
 
       <QuickNote disabled={busy} onSave={(text) => { setTab('new'); return saveNote(text); }} />
     </main>
