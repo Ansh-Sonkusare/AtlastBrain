@@ -112,7 +112,12 @@ async function main(): Promise<void> {
 
     const noQuestion = await call('POST', '/api/ask', { body: { question: '  ' } });
     assert.equal(noQuestion.status, 400);
-    const ask = await call('POST', '/api/ask', { body: { question: 'How do agents pay for web resources?' } });
+    // A claim written a moment ago can take a few seconds to reach TigerGraph's vector index.
+    let ask = await call('POST', '/api/ask', { body: { question: 'How do agents pay for web resources?' } });
+    for (let i = 0; i < 20 && ask.status === 200 && ask.body.citations.length === 0; i++) {
+      await new Promise((r) => setTimeout(r, 500));
+      ask = await call('POST', '/api/ask', { body: { question: 'How do agents pay for web resources?' } });
+    }
     assert.equal(ask.status, 200);
     assert.equal(ask.body.question, 'How do agents pay for web resources?');
     assert.ok(typeof ask.body.answer === 'string' && ask.body.answer.length > 0);

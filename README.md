@@ -25,12 +25,14 @@ paste page ─┘         │                                     │  split, em
 
 TigerGraph is the only database. It holds users, saves, claims, concepts, projects, embeddings, and billing state. The worker keeps its job state in the graph too, as the `status` attribute on `Source`.
 
-The PRD names four side panel views. This build has three of them as tabs:
+The PRD names four side panel views. This build has all four as tabs:
 
 - **What's new to me** shows the new claims, the repeats with links, and the TL;DR with "why it matters". It reads `GET /api/sources/:id`.
 - **Learn next** shows concepts that your projects need and that you did not read yet. It reads `GET /api/learn-next`.
 - **Graph** shows the source, its claims, their concepts, and the projects as a force-directed graph. Repeats are grey. It reads `GET /api/graph/:sourceId`.
-- **Ask the brain** is a PRD stretch goal and is not built.
+- **Ask** answers a question only from your own claims and lists the claims it used, each with its source. It reads `POST /api/ask`. The search is the GSQL query `search_claims`: a vector search over the claims your own sources made, with each hit's source and concepts added one hop out (GraphRAG).
+
+The Graph tab also has **Show the query**, which shows the `known_claims` GSQL on screen. Under **Your data**, **Export to Obsidian** downloads a zip of markdown notes with `[[wikilinks]]` (Pro only; the GSQL query `export_user` reads the whole graph in one call), and **Delete my data** removes your subgraph. Text that you select on the page before you save it is stored as a highlight and shown under the saved page.
 
 The **Pro** badge in the panel header comes from `GET /api/me`.
 
@@ -116,7 +118,7 @@ All of them. `next dev` reads `apps/web/.env.local` by itself. The `worker`, `se
 
 `stub` makes no network calls and gives the same output for the same input. The embeddings are real in every profile. The novelty check always compares real vectors.
 
-The `cheap` and `demo` profiles are built to the PRD, and a unit test checks the shape of the Anthropic request. No real Claude call was made, because there is no Anthropic key on the build machine.
+The `demo` profile ran on real Claude once, on the stage article: Sonnet split it into 12 claims (3 new, 9 repeats, all as labelled), Haiku linked the concepts, and Sonnet wrote a TL;DR of the 3 new claims that names x402 Sentinel. The save cost $0.0093. That run found one bug that the stub could not: Zod adds integer `minimum`/`maximum` to JSON schemas, and Claude's structured output rejects them, so the code now removes them. The `cheap` profile and the Claude answer step of Ask have only a unit test of the request shape.
 
 The `local` profile ran on the real model. The stage article went through the full pipeline on TigerGraph with `qwen3:8b` on the GPU. It gave 12 claims: 8 repeats with the right sources, the 3 planted new facts, and 1 labelled-known sentence that the model reworded past the threshold. Warm timings per save are about 8.6 s for the claim split, 2.5 s for concept links, and 4 s for the TL;DR. A cold first save also loads the 5 GB model, so the provider asks Ollama to keep it loaded for 30 minutes. `OLLAMA_MODEL=qwen2.5:7b` selects the PRD's fallback model.
 
@@ -155,7 +157,7 @@ A browser check of the built extension and the checkout page:
 CHROMIUM_PATH=/path/to/chromium pnpm ui-check
 ```
 
-This check needs `next dev` on port 3000, the worker, the seeded `demo` user, and the built extension. It saves screenshots to `/tmp/sb-ui-check/`. It saves an article as `demo` and pays for Pro as `demo`. After it runs, run `pnpm --filter web seed` again to reset `demo`.
+This check needs `next dev` on port 3000, the worker, the seeded `demo` user, and the built extension. It saves screenshots to `/tmp/sb-ui-check/`. It saves an article as `demo` and pays for Pro as `demo`. Right after it, `CHROMIUM_PATH=… pnpm ui-check:brain` asks a question in the Ask tab, opens Show the query, and downloads the Obsidian export. After the checks, run `pnpm --filter web seed` again to reset `demo`.
 
 ## For the TigerGraph judges
 
@@ -236,6 +238,6 @@ When `DODO_PAYMENTS_API_KEY` is empty, `createCheckout` returns `/dev/checkout?p
 - There is no authentication. The server trusts the `x-user-id` header. Anyone who can reach the API can act as any user. With no Dodo key, anyone who can reach `/dev/checkout?product=pro&user=<id>` can upgrade any user to Pro.
 - Wispr Flow was not tested. The quick note box is a normal textarea.
 - `cloudflared` is installed (`~/.local/bin/cloudflared`), but no tunnel was started. A tunnel puts the API on the public internet, and the API has no authentication. Start one only for the Dodo test: `cloudflared tunnel --url http://localhost:3000`.
-- The real Claude models were not tested. The `stub` profile and the local `qwen3:8b` model ran.
-- Highlights are not built. The schema has a `Highlight` vertex, but the pipeline does not use the `selection` field of a capture.
-- Ask the brain and the Obsidian export (both PRD stretch goals) are not built. The `delete_user` query exists, but no route calls it.
+- Real Claude ran once with the `demo` profile (see LLM profiles). The `cheap` profile was not run.
+- Ask the brain can miss a claim that was saved in the last few seconds, because TigerGraph's vector index takes a moment to include new vectors. With the `stub` profile the answer is the top 3 claims joined, not a written answer.
+- The Obsidian export is one-way. Concept notes have no summary, because nothing writes `Concept.summary` yet.

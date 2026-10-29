@@ -1,6 +1,6 @@
 # Task cards
 
-**Status: round 1 done (2026-10-29); round 2 (G3, A10) in progress.** Round 1 cards are merged on `main`. Outputs: the app in `apps/web`, the extension in `apps/extension`, GSQL in `graph/`, the end-to-end check `apps/web/scripts/e2e.ts`, the browser check `scripts/ui-check.mjs`, and the run log `.audit/build.tsv`. Setup and stage steps are in `README.md` and `DEMO.md`.
+**Status: done (2026-10-29).** Round 1 and round 2 (G3, A10) are merged on `main`. Outputs: the app in `apps/web`, the extension in `apps/extension`, GSQL in `graph/`, the end-to-end check `apps/web/scripts/e2e.ts`, the browser check `scripts/ui-check.mjs`, and the run log `.audit/build.tsv`. Setup and stage steps are in `README.md` and `DEMO.md`.
 
 Each card is one unattended session. Read `CLAUDE.md` and `docs/PRD.md` first. A card is done only when every "Done when" check passes on your branch. The lead re-runs the same checks after the merge.
 
