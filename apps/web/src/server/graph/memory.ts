@@ -123,6 +123,9 @@ export function createMemoryGraph(): GraphPort {
         .slice(0, limit)
         .map((s) => ({ ...s }));
     },
+    async listProcessingSources() {
+      return [...sources.values()].filter((s) => s.status === 'processing').map((s) => ({ ...s }));
+    },
     async listSourcesByStatus(userId, status) {
       return [...sources.values()]
         .filter((s) => s.userId === userId && s.status === status)

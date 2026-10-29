@@ -332,6 +332,13 @@ export function createTigerGraph(config: TigerGraphConfig = tigerGraphConfigFrom
       const found = await sources('pending_sources', { lim: limit });
       return found.sort((a, b) => a.savedAt.localeCompare(b.savedAt));
     },
+    async listProcessingSources() {
+      const res = await call<VertexJson<SourceAttrs>[]>(
+        `/graph/${config.graph}/vertices/Source?filter=${encodeURIComponent('status="processing"')}`,
+      );
+      if (res.error) throw new TigerGraphError(`list processing sources: ${res.message}`, res.code);
+      return (res.results ?? []).map((v) => toSource(v.attributes));
+    },
     async listSourcesByStatus(userId, status) {
       return sources('sources_by_status', { u: userParam(userId), status });
     },

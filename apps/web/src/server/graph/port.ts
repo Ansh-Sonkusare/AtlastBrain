@@ -75,6 +75,8 @@ export interface GraphPort {
     patch: Partial<Pick<SourceRecord, 'status' | 'newRatio' | 'tldr' | 'readAt' | 'title'>>,
   ): Promise<void>;
   listPendingSources(limit: number): Promise<SourceRecord[]>;
+  /** Every user's sources stuck in `processing`. Only the single worker calls it, at start-up. */
+  listProcessingSources(): Promise<SourceRecord[]>;
   listSourcesByStatus(userId: string, status: SourceStatus): Promise<SourceRecord[]>;
   markRead(userId: string, sourceId: string, at: string): Promise<void>;
 

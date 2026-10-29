@@ -1,4 +1,5 @@
 import { Webhook } from 'standardwebhooks';
+import { withBillingLock } from '../../../../server/billing/lock';
 import { handleDodoEvent } from '../../../../server/billing/webhook';
 import { getGraph } from '../../../../server/deps';
 
@@ -17,6 +18,7 @@ export async function POST(request: Request): Promise<Response> {
   } catch {
     return Response.json({ error: 'invalid signature' }, { status: 400 });
   }
-  const outcome = await handleDodoEvent(await getGraph(), event, webhookId, new Date());
+  const graph = await getGraph();
+  const outcome = await withBillingLock(() => handleDodoEvent(graph, event, webhookId, new Date()));
   return Response.json({ outcome });
 }

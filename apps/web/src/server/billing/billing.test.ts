@@ -1,3 +1,4 @@
+import { withBillingLock } from './lock';
 import { Webhook } from 'standardwebhooks';
 import { describe, expect, it, vi } from 'vitest';
 import { createMemoryGraph } from '../graph/memory';
@@ -194,6 +195,23 @@ describe('handleDodoEvent', () => {
     await handleDodoEvent(graph, pro, 'm1', NOW, env);
     await handleDodoEvent(graph, credits, 'm2', NOW, env);
     expect(await graph.getUser('u1')).toMatchObject({ plan: 'pro', credits: 200 });
+  });
+});
+
+describe('withBillingLock', () => {
+  it('lets only one of several parallel saves take the last free slot', async () => {
+    const graph = await setup();
+    await save(graph, 'u1', 29);
+    const decisions = await Promise.all(
+      Array.from({ length: 5 }, (_, i) =>
+        withBillingLock(async () => {
+          const d = await decideSave(graph, 'u1', NOW);
+          if (d !== 'blocked') await graph.createSource(source('u1', 'done'));
+          return d;
+        }),
+      ),
+    );
+    expect(decisions.filter((d) => d !== 'blocked')).toHaveLength(1);
   });
 });
 
