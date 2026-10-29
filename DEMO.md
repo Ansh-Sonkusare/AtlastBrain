@@ -18,7 +18,7 @@ Do these steps only for real Dodo checkout. Use the Dodo dashboard in test mode 
 1. Create a subscription product "Pro" at $5 a month. Put its id in `DODO_PRO_PRODUCT_ID`. The webhook ignores a `subscription.active` event for any other product id.
 2. Create a one-time product "Credit pack" at $3. Put its id in `DODO_CREDITS_PRODUCT_ID`.
 3. Put the test API key in `DODO_PAYMENTS_API_KEY`. Keep `DODO_PAYMENTS_ENVIRONMENT=test_mode`. The app refuses any other value.
-4. Get a public HTTPS address for `http://localhost:3000`. The PRD plans a Cloudflare Tunnel, but `cloudflared` is not installed on the build machine and no tunnel was set up. Install it and start a tunnel to port 3000.
+4. Get a public HTTPS address for `http://localhost:3000`. Run `cloudflared tunnel --url http://localhost:3000` (installed in `~/.local/bin`). It prints a `https://….trycloudflare.com` address, which changes on every start. Stop the tunnel after the demo, because the API has no authentication.
 5. In the dashboard, add a webhook endpoint at `<tunnel address>/api/webhooks/dodo`, for the `subscription.*` and `payment.succeeded` events.
 6. Copy the endpoint's signing secret into `DODO_PAYMENTS_WEBHOOK_KEY`. The secret you generated during setup does not match Dodo's signatures, and the route rejects every event signed by Dodo until you replace it.
 7. Restart `next dev` so that it reads the new values.

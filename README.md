@@ -110,13 +110,17 @@ All of them. `next dev` reads `apps/web/.env.local` by itself. The `worker`, `se
 | Profile | Claim split | Concept link | TL;DR | Run on this build |
 | --- | --- | --- | --- | --- |
 | `stub` | sentence split | word overlap | first 3 new claims | Yes. All tests, the seed, and the e2e check use it. |
-| `local` | Ollama `qwen3:8b` | Ollama `qwen3:8b` | Ollama `qwen3:8b` | No. Ollama is not installed. |
+| `local` | Ollama `qwen3:8b` | Ollama `qwen3:8b` | Ollama `qwen3:8b` | Yes, by hand on an RTX 4060 (see below). Tests do not use it. |
 | `cheap` | `claude-haiku-5-5` | `claude-haiku-5-5` | `claude-haiku-5-5` | No. There is no Anthropic key. |
 | `demo` | `claude-sonnet-5-5` | `claude-haiku-5-5` | `claude-sonnet-5-5` | No. There is no Anthropic key. |
 
 `stub` makes no network calls and gives the same output for the same input. The embeddings are real in every profile. The novelty check always compares real vectors.
 
-The `local`, `cheap`, and `demo` profiles are built to the PRD, and a unit test checks the shape of the Anthropic request. No real model call was made. The provider factory throws when it runs under a test with any profile other than `stub`.
+The `cheap` and `demo` profiles are built to the PRD, and a unit test checks the shape of the Anthropic request. No real Claude call was made, because there is no Anthropic key on the build machine.
+
+The `local` profile ran on the real model. The stage article went through the full pipeline on TigerGraph with `qwen3:8b` on the GPU. It gave 12 claims: 8 repeats with the right sources, the 3 planted new facts, and 1 labelled-known sentence that the model reworded past the threshold. Warm timings per save are about 8.6 s for the claim split, 2.5 s for concept links, and 4 s for the TL;DR. A cold first save also loads the 5 GB model, so the provider asks Ollama to keep it loaded for 30 minutes. `OLLAMA_MODEL=qwen2.5:7b` selects the PRD's fallback model.
+
+To run Ollama on this machine, start the server with `ollama-serve` (a wrapper in `~/.local/bin` that puts WSL's CUDA driver on the library path), then set `LLM_PROFILE=local` in `apps/web/.env.local` and restart the worker. The provider factory throws when it runs under a test with any profile other than `stub`.
 
 The cost guard is in `apps/web/src/server/llm/cost.ts`. Each Anthropic call adds a line to `logs/cost.jsonl` (or the path in `COST_LOG`). Before each call, the guard adds up the file. When the total is more than `COST_CAP_USD` (default 5), the call throws `CostCapError`. If an Anthropic call fails on a spend limit or on the cap, the provider falls back to Ollama and logs the fallback. Input text is cut to 48,000 characters, about 12,000 tokens.
 
@@ -231,7 +235,7 @@ When `DODO_PAYMENTS_API_KEY` is empty, `createCheckout` returns `/dev/checkout?p
 - On the original stage article, the threshold got 11 of 12 sentences right. Sentence 7 (the `outputSchema` line) was a new fact that matched a seed claim, so the article had too few new claims for a TL;DR. The lead replaced that sentence in `fixtures/seed/demo.json` with a clearly new fact. The addendum in `docs/threshold.md` records this. The threshold, the seed, and the labelled pairs did not change.
 - There is no authentication. The server trusts the `x-user-id` header. Anyone who can reach the API can act as any user. With no Dodo key, anyone who can reach `/dev/checkout?product=pro&user=<id>` can upgrade any user to Pro.
 - Wispr Flow was not tested. The quick note box is a normal textarea.
-- Cloudflare Tunnel is not set up, and `cloudflared` is not installed on the build machine. Without a public URL, the real Dodo webhook cannot reach the laptop.
-- The real Claude models were not tested. Only the `stub` profile ran.
+- `cloudflared` is installed (`~/.local/bin/cloudflared`), but no tunnel was started. A tunnel puts the API on the public internet, and the API has no authentication. Start one only for the Dodo test: `cloudflared tunnel --url http://localhost:3000`.
+- The real Claude models were not tested. The `stub` profile and the local `qwen3:8b` model ran.
 - Highlights are not built. The schema has a `Highlight` vertex, but the pipeline does not use the `selection` field of a capture.
 - Ask the brain and the Obsidian export (both PRD stretch goals) are not built. The `delete_user` query exists, but no route calls it.

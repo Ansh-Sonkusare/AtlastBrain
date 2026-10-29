@@ -40,7 +40,7 @@ export function tldrPrompt(newClaims: string[], projects: Project[]): StepPrompt
   return {
     step: 'tldr',
     system:
-      'Write a TL;DR of only the new claims given. Return at most 3 short bullets, one sentence on why it matters, and the id of the single project it matters most for (null if none fits). Use a project id exactly as listed.',
+      'Write a TL;DR of only the new claims given. Return at most 3 short bullets, the id of the single project they matter most for (null if none fits), and one sentence on why they matter for that project. The why-it-matters sentence must name the project by its name, for example "This matters for x402 Sentinel because ...". Use a project id exactly as listed.',
     user: `Projects:\n${projectLines(projects)}\n\nNew claims:\n${newClaims.map((c) => `- ${c}`).join('\n')}`,
   };
 }

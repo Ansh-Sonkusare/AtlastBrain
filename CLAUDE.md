@@ -20,7 +20,7 @@ Next.js 16 has breaking changes. Read the guide in `apps/web/node_modules/next/d
 
 ## LLM profiles
 
-`LLM_PROFILE` selects the provider for each pipeline step: `stub`, `local`, `cheap`, or `demo` (see the PRD). `stub` is deterministic and makes no network calls. Tests use `stub` only, and the provider factory throws when it runs under a test with any other profile. There is no Anthropic key and no Ollama on this machine, so `local`, `cheap`, and `demo` are built to their docs but are not run here.
+`LLM_PROFILE` selects the provider for each pipeline step: `stub`, `local`, `cheap`, or `demo` (see the PRD). `stub` is deterministic and makes no network calls. Tests use `stub` only, and the provider factory throws when it runs under a test with any other profile. There is no Anthropic key on this machine, so `cheap` and `demo` are built to their docs but are not run here. `local` runs on Ollama with `qwen3:8b` on the RTX 4060: start the server with `ollama-serve` (in `~/.local/bin`; it adds WSL's CUDA driver to the library path).
 
 ## Autopilot rules
 
