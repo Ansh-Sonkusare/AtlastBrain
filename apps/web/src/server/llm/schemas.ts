@@ -28,7 +28,19 @@ export const STEP_SCHEMAS = {
 /** One JSON schema per step, shared by every provider. */
 export function jsonSchemaFor(step: StepName): Record<string, unknown> {
   const { $schema: _drop, ...schema } = z.toJSONSchema(STEP_SCHEMAS[step]) as Record<string, unknown>;
-  return schema;
+  return stripIntegerBounds(schema) as Record<string, unknown>;
+}
+
+// Zod adds safe-integer minimum/maximum to every .int(); Claude's structured output rejects them.
+function stripIntegerBounds(node: unknown): unknown {
+  if (Array.isArray(node)) return node.map(stripIntegerBounds);
+  if (!node || typeof node !== 'object') return node;
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(node)) {
+    if ((node as Record<string, unknown>).type === 'integer' && (key === 'minimum' || key === 'maximum')) continue;
+    out[key] = stripIntegerBounds(value);
+  }
+  return out;
 }
 
 export const MAX_BULLETS = 3;
