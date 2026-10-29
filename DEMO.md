@@ -8,8 +8,8 @@ This guide is for the person on stage. It has the work to do before the demo, an
 
 There are two checkout paths. Decide first, because the other steps depend on the choice.
 
-- **The local stand-in (the default, and the only path that was tested).** Leave `DODO_PAYMENTS_API_KEY` empty in `apps/web/.env.local`. A blocked save opens `http://localhost:3000/dev/checkout`. That page says that it is a local stand-in for Dodo test checkout, and its **Pay (test)** button sends a signed webhook to the app.
-- **Real Dodo test checkout (never tested).** Set `DODO_PAYMENTS_API_KEY` to a `dodo_test_` key. When the key is set, `/dev/checkout` returns 404, so all of the steps under "Set up real Dodo test mode" are necessary. If one of them is not done, leave the key empty and use the stand-in.
+- **The local stand-in (works with no Dodo account).** Leave `DODO_PAYMENTS_API_KEY` empty in `apps/web/.env.local`. A blocked save opens `http://localhost:3000/dev/checkout`. That page says that it is a local stand-in for Dodo test checkout, and its **Pay (test)** button sends a signed webhook to the app.
+- **Real Dodo test checkout (tested once, end to end, on 2026-10-29).** Set `DODO_PAYMENTS_API_KEY` to a `dodo_test_` key. When the key is set, `/dev/checkout` returns 404, so all of the steps under "Set up real Dodo test mode" are necessary. If one of them is not done, leave the key empty and use the stand-in.
 
 ### Set up real Dodo test mode
 
@@ -118,7 +118,7 @@ The audience sees "Free limit reached. Finish checkout in the new tab." A new ta
 
 3. Pay:
 	- With the stand-in, click **Pay (test)**. The page then says "Paid. You can close this tab."
-	- With real Dodo, pay with the test card `4242 4242 4242 4242`, expiry `06/32`, CVV `123`.
+	- With real Dodo, switch **Pay in INR** to **USD** and set the billing country to **United States** (any address), then pay with the test card `4242 4242 4242 4242`, expiry `06/32`, CVV `123`. Dodo picks India from the venue's location, and with India billing it refuses the test card with `PAYMENT_METHOD_UNSUPPORTED`. The name and email fields are filled in from the app and cannot be edited.
 4. Go back to the side panel.
 
 The audience sees the **Pro** badge in the panel header, and the blocked save completes without another click. The labels in `demo.json` mark all 8 sentences of this article as new.

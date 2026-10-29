@@ -229,7 +229,7 @@ Each `webhook-id` is applied once. The handler writes a `WebhookEvent` vertex wi
 
 Only test mode is used. There is no live key anywhere in the repo.
 
-When `DODO_PAYMENTS_API_KEY` is empty, `createCheckout` returns `/dev/checkout?product=...&user=...`. That page is a local stand-in for Dodo test checkout, and it says so. Its **Pay (test)** button builds the event that Dodo sends, signs it with `DODO_PAYMENTS_WEBHOOK_KEY` through `standardwebhooks`, and posts it to the same webhook route. Every billing check in this build used this stand-in. The real Dodo path (`customers.create` and `checkoutSessions.create`) type-checks against the `dodopayments` SDK, but no call to the Dodo API was made, because there is no test key on the build machine.
+When `DODO_PAYMENTS_API_KEY` is empty, `createCheckout` returns `/dev/checkout?product=...&user=...`. That page is a local stand-in for Dodo test checkout, and it says so. Its **Pay (test)** button builds the event that Dodo sends, signs it with `DODO_PAYMENTS_WEBHOOK_KEY` through `standardwebhooks`, and posts it to the same webhook route. The automated checks use this stand-in. The real Dodo path ran once by hand in test mode: the app created the customer and the checkout session, a person paid with the `4242` test card (US billing, USD), Dodo's signed webhook came in through a Cloudflare quick tunnel, the plan became Pro, and the blocked save finished. With India billing, Dodo refused the same test card (`PAYMENT_METHOD_UNSUPPORTED`).
 
 ## Known limits
 
