@@ -54,6 +54,15 @@ try {
   await panel.screenshot({ path: out('4-graph'), fullPage: true });
   log('graph canvas drawn');
 
+  const article = await ctx.newPage();
+  await article.goto('http://localhost:3000/demo/x402-overlap');
+  await article.bringToFront();
+  const extracted = await panel.evaluate(() => chrome.runtime.sendMessage({ type: 'extract-active-tab' }));
+  if (!extracted?.ok) throw new Error(`extraction failed: ${JSON.stringify(extracted)}`);
+  const sentences = extracted.page.text.split(/(?<=[.!?])\s+/).length;
+  if (sentences < 12) throw new Error(`extraction merged paragraphs: ${sentences} sentences`);
+  log('extracted', JSON.stringify(extracted.page.title), extracted.page.text.split(/(?<=[.!?])\s+/).length, 'sentences from', extracted.page.url);
+
   const web = await ctx.newPage();
   await web.setViewportSize({ width: 900, height: 900 });
   await web.goto('http://localhost:3000/dev/checkout?product=pro&user=demo');

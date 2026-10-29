@@ -58,9 +58,10 @@ You need Docker, Node, pnpm, and Chrome or Chromium. TigerGraph needs a lot of m
 
 	```bash
 	cp .env.example apps/web/.env.local
+	sed -i "s#^DODO_PAYMENTS_WEBHOOK_KEY=.*#DODO_PAYMENTS_WEBHOOK_KEY=whsec_$(openssl rand -base64 24)#" apps/web/.env.local
 	```
 
-	The values in `.env.example` are not secrets. They select the `stub` LLM profile, the local TigerGraph, and the local checkout stand-in.
+	The values in `.env.example` select the `stub` LLM profile, the local TigerGraph, and the local checkout stand-in. The second command makes your own webhook signing secret. The repo does not ship one, because anyone who knows the secret can sign billing webhooks.
 
 4. Create the graph, the schema, and the queries:
 
@@ -100,7 +101,7 @@ You need Docker, Node, pnpm, and Chrome or Chromium. TigerGraph needs a lot of m
 
 ### Which processes read `.env.local`
 
-`next dev` reads `apps/web/.env.local`, and `pnpm --filter web e2e` reads it through `--env-file`. The `worker`, `seed`, `graph:load`, and `demo:fill` scripts run plain `tsx` and do not read it. They use their built-in defaults (`LLM_PROFILE=stub`, TigerGraph on `127.0.0.1:14240`, `NOVELTY_MAX_DIST=0.36`). To change one of these values for the worker, set it on the command line, for example `LLM_PROFILE=cheap ANTHROPIC_API_KEY=... pnpm --filter web worker`.
+All of them. `next dev` reads `apps/web/.env.local` by itself. The `worker`, `seed`, `graph:load`, `tune`, and `demo:fill` scripts load it with `tsx --env-file-if-exists=.env.local`, and `e2e` needs it (`--env-file`). A value set on the command line wins over the file.
 
 ## LLM profiles and the cost guard
 
@@ -232,6 +233,5 @@ When `DODO_PAYMENTS_API_KEY` is empty, `createCheckout` returns `/dev/checkout?p
 - Wispr Flow was not tested. The quick note box is a normal textarea.
 - Cloudflare Tunnel is not set up, and `cloudflared` is not installed on the build machine. Without a public URL, the real Dodo webhook cannot reach the laptop.
 - The real Claude models were not tested. Only the `stub` profile ran.
-- The worker does not read `apps/web/.env.local`. See "Which processes read `.env.local`" above.
 - Highlights are not built. The schema has a `Highlight` vertex, but the pipeline does not use the `selection` field of a capture.
 - Ask the brain and the Obsidian export (both PRD stretch goals) are not built. The `delete_user` query exists, but no route calls it.

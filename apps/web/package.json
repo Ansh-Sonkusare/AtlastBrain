@@ -8,12 +8,12 @@
     "start": "next start",
     "test": "vitest run",
     "typecheck": "next typegen && tsc --noEmit",
-    "worker": "tsx src/server/worker.ts",
-    "graph:load": "tsx scripts/graph-load.ts",
-    "seed": "tsx scripts/seed.ts",
-    "tune": "tsx scripts/tune-threshold.ts",
+    "worker": "tsx --env-file-if-exists=.env.local src/server/worker.ts",
+    "graph:load": "tsx --env-file-if-exists=.env.local scripts/graph-load.ts",
+    "seed": "tsx --env-file-if-exists=.env.local scripts/seed.ts",
+    "tune": "tsx --env-file-if-exists=.env.local scripts/tune-threshold.ts",
     "e2e": "tsx --env-file=.env.local scripts/e2e.ts",
-    "demo:fill": "tsx scripts/demo-fill.ts"
+    "demo:fill": "tsx --env-file-if-exists=.env.local scripts/demo-fill.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.3.0",

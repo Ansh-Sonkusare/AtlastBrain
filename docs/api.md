@@ -14,7 +14,7 @@ Every request carries `x-user-id`. The server rejects a request without it with 
 | `GET /api/graph/:sourceId` | | `200 Neighborhood`. |
 | `GET /api/me` | | `200 { user: User, usage: { used: number, limit: number, credits: number } }`. `used` counts saves since the first day of the current UTC month. |
 | `POST /api/billing/checkout` | `{ product: "pro" \| "credits" }` | `200 { checkoutUrl }`. |
-| `POST /api/webhooks/dodo` | Dodo webhook (Standard Webhooks signed) | `200 { ok: true }`, `401` on a bad signature. No `x-user-id`; the user comes from the event. |
+| `POST /api/webhooks/dodo` | Dodo webhook (Standard Webhooks signed) | `200 { outcome }` (`applied`, `duplicate`, `ignored`, `unknown_user`, or `invalid`), `400` on a bad signature. No `x-user-id`; the user comes from the event. |
 | `GET /api/vocabulary` | | `200 text/plain`, one project or concept name per line, for Wispr Flow's dictionary. |
 
 Side panel flow: `POST /api/capture`, then poll `GET /api/sources/:id` every second while it is `pending` or `processing`, showing "checking against your brain…". On `blocked`, open `checkoutUrl` in a new tab and keep polling `GET /api/sources/:id`; the webhook moves the source back to `pending` once the plan allows it, so the same poll shows the result.

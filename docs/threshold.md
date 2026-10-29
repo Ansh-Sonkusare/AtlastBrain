@@ -76,7 +76,7 @@ Each sentence goes through `knownClaims` at the chosen threshold. "Nearest sourc
 
 ## Notes
 
-- Set `NOVELTY_MAX_DIST=0.36`. The code default in `pipeline/deps.ts` is still 0.35. G2 did not change pipeline code, so the lead decides whether to move the default.
+- Set `NOVELTY_MAX_DIST=0.36`. The lead moved the code default in `pipeline/deps.ts` to 0.36 after this run.
 - The margin is thin. The loosest same pair is 0.347 and the closest different pair is 0.378, so only 0.347 to 0.378 separates the labels and 0.36 sits inside it.
 - On x402-overlap, sentence 7 (outputSchema) is the one miss. It lies 0.324 from the verify and settle article, nearer than sentence 5 (0.347), which must count as known. No threshold gets both right.
 

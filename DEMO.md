@@ -20,7 +20,7 @@ Do these steps only for real Dodo checkout. Use the Dodo dashboard in test mode 
 3. Put the test API key in `DODO_PAYMENTS_API_KEY`. Keep `DODO_PAYMENTS_ENVIRONMENT=test_mode`. The app refuses any other value.
 4. Get a public HTTPS address for `http://localhost:3000`. The PRD plans a Cloudflare Tunnel, but `cloudflared` is not installed on the build machine and no tunnel was set up. Install it and start a tunnel to port 3000.
 5. In the dashboard, add a webhook endpoint at `<tunnel address>/api/webhooks/dodo`, for the `subscription.*` and `payment.succeeded` events.
-6. Copy the endpoint's signing secret into `DODO_PAYMENTS_WEBHOOK_KEY`. The dev secret from `.env.example` does not match Dodo's signatures, and the route rejects every event with it.
+6. Copy the endpoint's signing secret into `DODO_PAYMENTS_WEBHOOK_KEY`. The secret you generated during setup does not match Dodo's signatures, and the route rejects every event signed by Dodo until you replace it.
 7. Restart `next dev` so that it reads the new values.
 8. Do one full payment with the test card `4242 4242 4242 4242`, expiry `06/32`, CVV `123`. Then run `pnpm --filter web seed` to reset the user.
 
@@ -49,11 +49,14 @@ These steps need a person. Do them in this order on the demo laptop.
 
 ### Know how an article gets into the panel
 
-The three stage texts are in `fixtures/seed/demo.json`, under the keys `x402-overlap`, `voice-note`, and `fresh-topic`. Their `example.com` addresses are not real pages, and the repo does not serve them. So **Save this page** and Alt+S cannot save them.
+The three stage texts are in `fixtures/seed/demo.json`, under the keys `x402-overlap`, `voice-note`, and `fresh-topic`. The app serves the two articles as real pages:
 
-The tested way is to paste the article's `body` into the **Quick note** box and click **Save note**. This is what `pnpm ui-check` did. The panel then shows the full result in **What's new to me**. The save is stored as a voice capture titled "Voice note", so the URL and the title of the article do not show. If you want a real page save with Alt+S, put the article on a reachable web page before the demo. Nothing in the repo does this.
+- `http://localhost:3000/demo/x402-overlap`
+- `http://localhost:3000/demo/fresh-topic`
 
-Open the three bodies in a text editor before the demo, so that you can copy each one quickly.
+Open the page and press Alt+S, or click **Save this page** in the side panel. `pnpm ui-check` checked that the extension reads these pages (the title and all 12 sentences). It did not press Alt+S, because a headless browser cannot send extension shortcuts, so rehearse the shortcut once.
+
+The fallback is to paste the article's `body` into the **Quick note** box and click **Save note**. `pnpm ui-check` tested this path end to end. The save is then stored as a voice capture titled "Voice note".
 
 ## The 3-minute script
 
@@ -68,8 +71,8 @@ The audience sees the panel with "Save a page to see what is new to you." and th
 
 ### 2. First save (45 seconds)
 
-1. Copy the `body` of `x402-overlap` (the article "How Autonomous Agents Pay for APIs With x402").
-2. Paste it into the **Quick note** box and click **Save note**.
+1. Open `http://localhost:3000/demo/x402-overlap` (the article "How Autonomous Agents Pay for APIs With x402").
+2. Press Alt+S. If the shortcut does nothing, click **Save this page**, or paste the `body` into the **Quick note** box and click **Save note**.
 
 The audience sees "checking against your brain…", then the result in **What's new to me**. The panel shows the new claims, the repeated claims in grey with "you read this in" links to the seed articles, a TL;DR of the new claims only, and "Why it matters" that names x402 Sentinel.
 
@@ -108,8 +111,8 @@ The audience sees up to 3 concepts that a project needs and that the user did no
 
 ### 6. Paywall (35 seconds)
 
-1. Copy the `body` of `fresh-topic` (the article "CRDTs for Local-First Apps").
-2. Paste it into the **Quick note** box and click **Save note**.
+1. Open `http://localhost:3000/demo/fresh-topic` (the article "CRDTs for Local-First Apps").
+2. Press Alt+S, or click **Save this page**.
 
 The audience sees "Free limit reached. Finish checkout in the new tab." A new tab opens with the checkout.
 
