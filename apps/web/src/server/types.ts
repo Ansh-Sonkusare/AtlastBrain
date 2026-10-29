@@ -80,6 +80,46 @@ export interface GraphLink {
   type: 'MAKES' | 'REPEATS' | 'ABOUT' | 'RELEVANT_TO';
 }
 
+export interface Highlight {
+  id: string;
+  sourceId: string;
+  text: string;
+  createdAt: string;
+}
+
+/** Ask the brain: an answer built only from the user's own claims, with the claims it used. */
+export interface BrainAnswer {
+  question: string;
+  answer: string;
+  citations: ClaimMatch[];
+}
+
+export interface ExportSource {
+  id: string;
+  title: string;
+  url: string;
+  savedAt: string;
+  readAt: string | null;
+  tldr: Tldr | null;
+  made: { id: string; text: string; concepts: string[] }[];
+  repeated: { claimId: string; text: string; claimText: string; sourceId: string; sourceTitle: string }[];
+  highlights: string[];
+}
+
+export interface ExportConcept {
+  id: string;
+  name: string;
+  summary: string;
+  projects: string[];
+}
+
+/** Everything one user owns, shaped for the Obsidian export. */
+export interface GraphExport {
+  projects: Project[];
+  concepts: ExportConcept[];
+  sources: ExportSource[];
+}
+
 export interface Neighborhood {
   nodes: GraphNode[];
   links: GraphLink[];

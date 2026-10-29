@@ -1,6 +1,8 @@
 import type {
   CaptureSource,
   ClaimMatch,
+  GraphExport,
+  Highlight,
   LearnNextItem,
   Neighborhood,
   Plan,
@@ -95,6 +97,14 @@ export interface GraphPort {
 
   learnNext(userId: string, limit: number): Promise<LearnNextItem[]>;
   neighborhood(userId: string, sourceId: string): Promise<Neighborhood>;
+
+  /** Nearest claims among every claim the user's own sources made (OWNS → MAKES), nearest first. */
+  searchClaims(userId: string, embedding: number[], k: number): Promise<ClaimMatch[]>;
+
+  addHighlight(userId: string, highlight: Highlight): Promise<void>;
+  listHighlights(userId: string, sourceId: string): Promise<Highlight[]>;
+
+  exportGraph(userId: string): Promise<GraphExport>;
 
   deleteUser(userId: string): Promise<void>;
 }

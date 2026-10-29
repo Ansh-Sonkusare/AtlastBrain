@@ -1,7 +1,9 @@
 import { cosineDistance } from '../embed';
 import type {
   ClaimMatch,
+  GraphExport,
   GraphLink,
+  Highlight,
   GraphNode,
   LearnNextItem,
   Neighborhood,
@@ -38,6 +40,7 @@ export function createMemoryGraph(): GraphPort {
   const concepts = new Map<string, ConceptRow>();
   const about = new Map<string, Set<string>>();
   const projects = new Map<string, ProjectRecord & { userId: string }>();
+  const highlights = new Map<string, Highlight>();
 
   const readKey = (userId: string, sourceId: string) => `${userId}\u0000${sourceId}`;
   const isRead = (userId: string, sourceId: string) => reads.has(readKey(userId, sourceId));
@@ -265,8 +268,66 @@ export function createMemoryGraph(): GraphPort {
       return { nodes: [...nodes.values()], links: uniqueLinks };
     },
 
+    async searchClaims(userId, embedding, k) {
+      return [...claims.values()]
+        .filter((c) => sources.get(c.madeBy)?.userId === userId)
+        .map((c) => matchFor(c, cosineDistance(embedding, c.embedding)))
+        .sort((a, b) => a.distance - b.distance)
+        .slice(0, k);
+    },
+
+    async addHighlight(userId, highlight) {
+      if (!ownedSource(userId, highlight.sourceId)) throw new Error(`Unknown source ${highlight.sourceId}`);
+      highlights.set(highlight.id, { ...highlight });
+    },
+    async listHighlights(userId, sourceId) {
+      if (!ownedSource(userId, sourceId)) return [];
+      return [...highlights.values()]
+        .filter((h) => h.sourceId === sourceId)
+        .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+        .map((h) => ({ ...h }));
+    },
+
+    async exportGraph(userId): Promise<GraphExport> {
+      const mine = [...sources.values()].filter((s) => s.userId === userId && s.status !== 'blocked');
+      return {
+        projects: [...projects.values()]
+          .filter((p) => p.userId === userId)
+          .map(({ id, name, description }) => ({ id, name, description })),
+        concepts: [...concepts.values()]
+          .filter((c) => c.userId === userId)
+          .map((c) => ({
+            id: c.id,
+            name: c.name,
+            summary: '',
+            projects: [...c.projectIds].map((id) => projects.get(id)?.name).filter((n): n is string => !!n),
+          })),
+        sources: mine.map((s) => ({
+          id: s.id,
+          title: s.title,
+          url: s.url,
+          savedAt: s.savedAt,
+          readAt: s.readAt,
+          tldr: s.tldr,
+          made: [...claims.values()]
+            .filter((c) => c.madeBy === s.id)
+            .map((c) => ({ id: c.id, text: c.text, concepts: conceptNames(c.id) })),
+          repeated: (repeats.get(s.id) ?? []).map((r) => {
+            const claim = claims.get(r.claimId)!;
+            const from = sources.get(claim.madeBy)!;
+            return { claimId: r.claimId, text: r.text, claimText: claim.text, sourceId: from.id, sourceTitle: from.title };
+          }),
+          highlights: [...highlights.values()]
+            .filter((h) => h.sourceId === s.id)
+            .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+            .map((h) => h.text),
+        })),
+      };
+    },
+
     async deleteUser(userId) {
       users.delete(userId);
+      for (const [id, h] of highlights) if (sources.get(h.sourceId)?.userId === userId) highlights.delete(id);
       for (const s of [...sources.values()]) {
         if (s.userId !== userId) continue;
         for (const [id, c] of claims) if (c.madeBy === s.id) { claims.delete(id); about.delete(id); }

@@ -461,6 +461,19 @@ export function createTigerGraph(config: TigerGraphConfig = tigerGraphConfigFrom
       return { nodes, links };
     },
 
+    async searchClaims() {
+      throw new Error('searchClaims: not built yet (card G3)');
+    },
+    async addHighlight() {
+      throw new Error('addHighlight: not built yet (card G3)');
+    },
+    async listHighlights() {
+      throw new Error('listHighlights: not built yet (card G3)');
+    },
+    async exportGraph() {
+      throw new Error('exportGraph: not built yet (card G3)');
+    },
+
     async deleteUser(userId) {
       await query('delete_user', { u: userParam(userId) });
     },
