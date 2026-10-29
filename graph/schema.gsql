@@ -1,0 +1,26 @@
+USE GLOBAL
+CREATE GRAPH SecondBrain()
+USE GRAPH SecondBrain
+CREATE SCHEMA_CHANGE JOB sb_schema FOR GRAPH SecondBrain {
+  ADD VERTEX User(PRIMARY_ID id STRING, email STRING, plan STRING DEFAULT "free", credits INT DEFAULT 0, dodo_customer_id STRING) WITH primary_id_as_attribute="true";
+  ADD VERTEX Source(PRIMARY_ID id STRING, user_id STRING, url STRING, title STRING, kind STRING, status STRING, saved_at STRING, read_at STRING, content_hash STRING, body STRING, new_ratio DOUBLE, tldr STRING) WITH primary_id_as_attribute="true";
+  ADD VERTEX Claim(PRIMARY_ID id STRING, text STRING, first_seen STRING) WITH primary_id_as_attribute="true";
+  ADD VERTEX Highlight(PRIMARY_ID id STRING, text STRING, created_at STRING) WITH primary_id_as_attribute="true";
+  ADD VERTEX Concept(PRIMARY_ID id STRING, user_id STRING, name STRING, summary STRING) WITH primary_id_as_attribute="true";
+  ADD VERTEX Project(PRIMARY_ID id STRING, user_id STRING, name STRING, description STRING) WITH primary_id_as_attribute="true";
+  ADD VERTEX WebhookEvent(PRIMARY_ID id STRING, received_at STRING) WITH primary_id_as_attribute="true";
+  ADD DIRECTED EDGE OWNS(FROM User, TO Source | FROM User, TO Project | FROM User, TO Concept) WITH REVERSE_EDGE="reverse_OWNS";
+  ADD DIRECTED EDGE READ(FROM User, TO Source, read_at STRING) WITH REVERSE_EDGE="reverse_READ";
+  ADD DIRECTED EDGE MAKES(FROM Source, TO Claim) WITH REVERSE_EDGE="reverse_MAKES";
+  ADD DIRECTED EDGE REPEATS(FROM Source, TO Claim, text STRING, distance DOUBLE) WITH REVERSE_EDGE="reverse_REPEATS";
+  ADD DIRECTED EDGE ABOUT(FROM Claim, TO Concept) WITH REVERSE_EDGE="reverse_ABOUT";
+  ADD DIRECTED EDGE RELEVANT_TO(FROM Concept, TO Project) WITH REVERSE_EDGE="reverse_RELEVANT_TO";
+  ADD DIRECTED EDGE HIGHLIGHTS(FROM Highlight, TO Source) WITH REVERSE_EDGE="reverse_HIGHLIGHTS";
+}
+RUN SCHEMA_CHANGE JOB sb_schema
+CREATE SCHEMA_CHANGE JOB sb_vectors FOR GRAPH SecondBrain {
+  ALTER VERTEX Claim ADD VECTOR ATTRIBUTE embedding(DIMENSION=384, METRIC="COSINE");
+  ALTER VERTEX Concept ADD VECTOR ATTRIBUTE embedding(DIMENSION=384, METRIC="COSINE");
+  ALTER VERTEX Project ADD VECTOR ATTRIBUTE embedding(DIMENSION=384, METRIC="COSINE");
+}
+RUN SCHEMA_CHANGE JOB sb_vectors

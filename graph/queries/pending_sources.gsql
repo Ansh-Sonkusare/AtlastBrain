@@ -1,0 +1,5 @@
+CREATE OR REPLACE QUERY pending_sources(INT lim) FOR GRAPH SecondBrain SYNTAX v3 {
+  all_sources = {Source.*};
+  sources = SELECT s FROM (s:all_sources) WHERE s.status == "pending" ORDER BY s.saved_at ASC LIMIT lim;
+  PRINT sources;
+}

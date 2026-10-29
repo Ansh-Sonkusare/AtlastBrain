@@ -1,0 +1,13 @@
+CREATE OR REPLACE QUERY source_claims(VERTEX<User> u, STRING src) FOR GRAPH SecondBrain SYNTAX v3 {
+  SumAccum<STRING> @repeat_text, @source_id, @source_title, @source_url;
+  SumAccum<DOUBLE> @distance;
+  SetAccum<STRING> @concepts;
+  start = {u};
+  source = SELECT s FROM (x:start)-[:OWNS]->(s:Source) WHERE s.id == src;
+  made = SELECT c FROM (s:source)-[:MAKES]->(c:Claim);
+  repeated = SELECT c FROM (s:source)-[e:REPEATS]->(c:Claim) ACCUM c.@repeat_text = e.text, c.@distance = e.distance;
+  origin = SELECT c FROM (c:repeated)<-[:MAKES]-(o:Source)
+           ACCUM c.@source_id = o.id, c.@source_title = o.title, c.@source_url = o.url;
+  tagged = SELECT c FROM (c:repeated)-[:ABOUT]->(k:Concept) ACCUM c.@concepts += k.name;
+  PRINT made, repeated;
+}

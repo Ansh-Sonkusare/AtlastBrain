@@ -1,0 +1,9 @@
+CREATE OR REPLACE QUERY neighborhood(VERTEX<User> u, STRING src) FOR GRAPH SecondBrain SYNTAX v3 {
+  SetAccum<EDGE> @@links;
+  start = {u};
+  source = SELECT s FROM (x:start)-[:OWNS]->(s:Source) WHERE s.id == src;
+  claims = SELECT c FROM (s:source)-[e:MAKES|REPEATS]->(c:Claim) ACCUM @@links += e;
+  concepts = SELECT k FROM (c:claims)-[e:ABOUT]->(k:Concept) ACCUM @@links += e;
+  projects = SELECT p FROM (k:concepts)-[e:RELEVANT_TO]->(p:Project) ACCUM @@links += e;
+  PRINT source, claims, concepts, projects, @@links AS links;
+}

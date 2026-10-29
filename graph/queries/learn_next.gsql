@@ -1,0 +1,16 @@
+CREATE OR REPLACE QUERY learn_next(VERTEX<User> u, INT lim) FOR GRAPH SecondBrain SYNTAX v3 {
+  TYPEDEF TUPLE<STRING id, STRING title, STRING url> SourceRef;
+  OrAccum @is_read, @is_known;
+  MinAccum<STRING> @project;
+  SetAccum<SourceRef> @unread;
+  start = {u};
+  read_sources = SELECT s FROM (x:start)-[:READ]->(s:Source) POST-ACCUM s.@is_read += TRUE;
+  known = SELECT k FROM (s:read_sources)-[:MAKES|REPEATS]->(c:Claim)-[:ABOUT]->(k:Concept) ACCUM k.@is_known += TRUE;
+  projects = SELECT p FROM (x:start)-[:OWNS]->(p:Project);
+  cands = SELECT k FROM (p:projects)<-[:RELEVANT_TO]-(k:Concept) WHERE NOT k.@is_known ACCUM k.@project += p.name;
+  unread_sources = SELECT s FROM (x:start)-[:OWNS]->(s:Source) WHERE NOT s.@is_read;
+  hits = SELECT k FROM (s:unread_sources)-[:MAKES|REPEATS]->(c:Claim)-[:ABOUT]->(k:cands)
+         ACCUM k.@unread += SourceRef(s.id, s.title, s.url);
+  result = SELECT k FROM (k:cands) ORDER BY k.@unread.size() DESC, k.name ASC LIMIT lim;
+  PRINT result;
+}

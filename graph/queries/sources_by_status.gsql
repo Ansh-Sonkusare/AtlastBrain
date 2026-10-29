@@ -1,0 +1,5 @@
+CREATE OR REPLACE QUERY sources_by_status(VERTEX<User> u, STRING status) FOR GRAPH SecondBrain SYNTAX v3 {
+  start = {u};
+  sources = SELECT s FROM (x:start)-[:OWNS]->(s:Source) WHERE s.status == status;
+  PRINT sources;
+}

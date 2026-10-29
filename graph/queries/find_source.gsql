@@ -1,0 +1,5 @@
+CREATE OR REPLACE QUERY find_source(VERTEX<User> u, STRING url, STRING content_hash) FOR GRAPH SecondBrain SYNTAX v3 {
+  start = {u};
+  sources = SELECT s FROM (x:start)-[:OWNS]->(s:Source) WHERE s.url == url OR s.content_hash == content_hash;
+  PRINT sources;
+}

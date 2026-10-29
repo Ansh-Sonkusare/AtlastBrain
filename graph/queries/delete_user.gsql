@@ -1,0 +1,9 @@
+CREATE OR REPLACE QUERY delete_user(VERTEX<User> u) FOR GRAPH SecondBrain SYNTAX v3 {
+  start = {u};
+  owned = SELECT t FROM (x:start)-[:OWNS]->(t);
+  claims = SELECT c FROM (s:owned)-[:MAKES]->(c:Claim);
+  highlights = SELECT h FROM (s:owned)<-[:HIGHLIGHTS]-(h:Highlight);
+  doomed = start UNION owned UNION claims UNION highlights;
+  deleted = SELECT v FROM (v:doomed) POST-ACCUM DELETE(v);
+  PRINT doomed.size() AS deleted;
+}
