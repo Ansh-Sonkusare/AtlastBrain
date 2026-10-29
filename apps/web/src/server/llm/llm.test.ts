@@ -218,4 +218,9 @@ describe('request builders', () => {
     expect(req.options.num_ctx).toBeGreaterThanOrEqual(12288);
     expect(req.format).toEqual(jsonSchemaFor('split'));
   });
+  it('sends no integer bounds, which Claude structured output rejects', () => {
+    for (const step of ['split', 'link', 'tldr'] as const) {
+      expect(JSON.stringify(jsonSchemaFor(step))).not.toMatch(/"(minimum|maximum)"/);
+    }
+  });
 });
