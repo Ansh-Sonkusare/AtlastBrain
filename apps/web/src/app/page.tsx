@@ -1,69 +1,47 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+'use client';
 
-export default function Home() {
+import { useState } from 'react';
+
+const USER = 'demo';
+
+export default function Paste() {
+  const [url, setUrl] = useState('');
+  const [title, setTitle] = useState('');
+  const [text, setText] = useState('');
+  const [result, setResult] = useState<unknown>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function save() {
+    setBusy(true);
+    setResult(null);
+    const headers = { 'content-type': 'application/json', 'x-user-id': USER };
+    const res = await fetch('/api/capture', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ url: url || undefined, title, text, source: 'web' }),
+    });
+    const first = (await res.json()) as { sourceId?: string; status?: string; error?: string };
+    setResult(first);
+    while (first.sourceId && ['pending', 'processing'].includes((first as { status: string }).status)) {
+      await new Promise((r) => setTimeout(r, 1000));
+      const poll = await fetch(`/api/sources/${first.sourceId}`, { headers });
+      const next = (await poll.json()) as { status: string };
+      setResult(next);
+      first.status = next.status;
+    }
+    setBusy(false);
+  }
+
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className={styles.intro}>
-          <h1>
-            To get started, edit the{" "}
-            <code className={styles.code}>page.tsx</code> file.
-          </h1>
-          <p>
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className={styles.secondary}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+    <main style={{ maxWidth: 720, margin: '2rem auto', display: 'grid', gap: 8, fontFamily: 'system-ui' }}>
+      <h1>Second Brain: paste a page</h1>
+      <input placeholder="URL" value={url} onChange={(e) => setUrl(e.target.value)} />
+      <input placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
+      <textarea placeholder="Text" rows={12} value={text} onChange={(e) => setText(e.target.value)} />
+      <button disabled={busy || !text} onClick={save}>
+        {busy ? 'Checking against your brain…' : 'Save'}
+      </button>
+      {result !== null && <pre style={{ whiteSpace: 'pre-wrap' }}>{JSON.stringify(result, null, 2)}</pre>}
+    </main>
   );
 }

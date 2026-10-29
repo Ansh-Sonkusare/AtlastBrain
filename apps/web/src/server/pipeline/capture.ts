@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import type { SourceRecord } from '../graph/port';
-import type { CapturePayload } from '../types';
+import type { CapturePayload, SourceStatus } from '../types';
 import type { PipelineDeps } from './deps';
 
 export type CaptureInput = Omit<CapturePayload, 'url'> & { url?: string };
@@ -32,10 +32,16 @@ export function contentHash(text: string): string {
   return createHash('sha256').update(normalised).digest('hex');
 }
 
+export interface CaptureOptions {
+  /** Runs only for a new source, before it is created. Returns its first status. Defaults to `pending`. */
+  admit?: () => Promise<Extract<SourceStatus, 'pending' | 'blocked'>>;
+}
+
 export async function capture(
   deps: Pick<PipelineDeps, 'graph' | 'now'>,
   userId: string,
   payload: CaptureInput,
+  options: CaptureOptions = {},
 ): Promise<CaptureResult> {
   const now = deps.now();
   const rawUrl = payload.url?.trim();
@@ -45,13 +51,14 @@ export async function capture(
   const existing = await deps.graph.findSource(userId, url, hash);
   if (existing) return { source: existing, duplicate: true };
 
+  const status = (await options.admit?.()) ?? 'pending';
   const source: SourceRecord = {
     id: randomUUID(),
     userId,
     url,
     title: payload.title,
     kind: payload.source,
-    status: 'pending',
+    status,
     savedAt: payload.capturedAt ?? now.toISOString(),
     readAt: null,
     contentHash: hash,
