@@ -1,0 +1,9 @@
+packages:
+  - apps/*
+allowBuilds:
+  sharp: true
+  onnxruntime-node: true
+  esbuild: true
+  unrs-resolver: false
+  spawn-sync: false
+  protobufjs: false

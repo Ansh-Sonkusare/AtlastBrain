@@ -1,0 +1,9 @@
+{
+  "name": "second-brain",
+  "private": true,
+  "packageManager": "pnpm@12.9.0",
+  "scripts": {
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck"
+  }
+}
