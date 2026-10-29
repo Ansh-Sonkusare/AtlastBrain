@@ -1,0 +1,24 @@
+CREATE OR REPLACE QUERY export_user(VERTEX<User> u) FOR GRAPH SecondBrain SYNTAX v3 {
+  TYPEDEF TUPLE<STRING source_id, STRING claim_id, STRING text, STRING claim_text, STRING origin_id, STRING origin_title> RepeatRow;
+  TYPEDEF TUPLE<STRING source_id, STRING created_at, STRING text> HighlightRow;
+  SetAccum<STRING> @project_names, @concept_names;
+  SumAccum<STRING> @made_by;
+  ListAccum<RepeatRow> @@repeats;
+  ListAccum<HighlightRow> @@highlights;
+  start = {u};
+  projects = SELECT p FROM (x:start)-[:OWNS]->(p:Project);
+  concepts = SELECT t FROM (x:start)-[:OWNS]->(t:Concept);
+  linked = SELECT t FROM (t:concepts)-[:RELEVANT_TO]->(p:Project) ACCUM t.@project_names += p.name;
+  sources = SELECT s FROM (x:start)-[:OWNS]->(s:Source) WHERE s.status != "blocked";
+  claims = SELECT c FROM (s:sources)-[:MAKES]->(c:Claim) ACCUM c.@made_by = s.id;
+  tagged = SELECT c FROM (c:claims)-[:ABOUT]->(t:Concept) ACCUM c.@concept_names += t.name;
+  restated = SELECT s FROM (s:sources)-[e:REPEATS]->(c:Claim)<-[:MAKES]-(o:Source)
+             ACCUM @@repeats += RepeatRow(s.id, c.id, e.text, c.text, o.id, o.title);
+  marked = SELECT s FROM (s:sources)<-[:HIGHLIGHTS]-(h:Highlight)
+           ACCUM @@highlights += HighlightRow(s.id, h.created_at, h.text);
+  PRINT projects[projects.name AS name, projects.description AS description];
+  PRINT concepts[concepts.name AS name, concepts.summary AS summary, concepts.@project_names AS projects];
+  PRINT sources[sources.title AS title, sources.url AS url, sources.saved_at AS saved_at, sources.read_at AS read_at, sources.tldr AS tldr];
+  PRINT claims[claims.text AS text, claims.@made_by AS made_by, claims.@concept_names AS concepts];
+  PRINT @@repeats AS repeats, @@highlights AS highlights;
+}

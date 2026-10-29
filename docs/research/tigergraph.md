@@ -413,3 +413,13 @@ Not documented (UNCONFIRMED, test in your container):
 - After a vector upsert, `/restpp/vector/status/<graph>/<type>/<attr>` turns `Rebuild_processing` at once and back to `Ready_for_query` after about 1 s.
 - `PRINT s WITH VECTOR` puts vectors under `Embeddings.<attr>`, and returns `[]` for a vector the index has not taken in yet. The built-in vertex GET never returns vectors.
 - In a query, an alias may not reuse a parameter name (SEM-1613).
+
+### Added by card G3
+
+- `POST /gsql/v1/queries/interpret?graph=<g>&<param>=<value>` runs a query body that starts `INTERPRET QUERY (<params>) FOR GRAPH <g> SYNTAX v3 { ... }` without installing it. Use it to try a query in about 1 s. A `VERTEX<User>` parameter takes the plain id (`u=demo`).
+- Interpreted mode does not support `vectorSearch`. It returns `error: true`, code `GSQL-2500`, message `Unsupported Statement|TOPK_VEC_SEARCH_FUNC`. To try a vector query, install it alone. One query installs in about 30 s and two in about 47 s. All 15 install in about 3.6 min.
+- `vectorSearch` with `k = 0` returns `error: true`, message `K: 0 must be > 0`. The client returns `[]` before it calls the query.
+- `PRINT vs[vs.attr AS name, vs.@acc AS name2]` returns each vertex with `v_id`, `v_type` and only the named attributes. Use it to keep large attributes such as `Source.body` out of the response.
+- `PRINT vs[...] LIMIT n` is a syntax error. Put the limit in the `SELECT`.
+- A pattern can change direction in the middle: `(s:sources)-[e:REPEATS]->(c:Claim)<-[:MAKES]-(o:Source)` works in `SYNTAX v3`.
+- A REST++ upsert with `vertex_must_exist=true` accepts an edge whose FROM vertex is new in the same payload (`addHighlight` writes the `Highlight` vertex and its `HIGHLIGHTS` edge together).

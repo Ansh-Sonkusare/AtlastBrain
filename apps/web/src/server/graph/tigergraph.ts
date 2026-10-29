@@ -1,8 +1,11 @@
 import type {
   CaptureSource,
   ClaimMatch,
+  ExportSource,
+  GraphExport,
   GraphLink,
   GraphNode,
+  Highlight,
   LearnNextItem,
   Neighborhood,
   Plan,
@@ -112,6 +115,21 @@ interface LearnNextAttrs {
   '@unread': { id: string; title: string; url: string }[];
 }
 
+interface HighlightAttrs {
+  id: string;
+  text: string;
+  created_at: string;
+}
+
+interface ExportJson {
+  projects: VertexJson<{ name: string; description: string }>[];
+  concepts: VertexJson<{ name: string; summary: string; projects: string[] }>[];
+  sources: VertexJson<{ title: string; url: string; saved_at: string; read_at: string; tldr: string }>[];
+  claims: VertexJson<{ text: string; made_by: string; concepts: string[] }>[];
+  repeats: { source_id: string; claim_id: string; text: string; claim_text: string; origin_id: string; origin_title: string }[];
+  highlights: { source_id: string; created_at: string; text: string }[];
+}
+
 interface NamedAttrs {
   id: string;
   name: string;
@@ -153,7 +171,65 @@ function toSource(a: SourceAttrs): SourceRecord {
     contentHash: a.content_hash,
     body: a.body,
     newRatio: a.new_ratio,
-    tldr: a.tldr === '' ? null : (JSON.parse(a.tldr) as Tldr),
+    tldr: parseTldr(a.tldr),
+  };
+}
+
+const parseTldr = (tldr: string): Tldr | null => (tldr === '' ? null : (JSON.parse(tldr) as Tldr));
+const byId = (a: string, b: string) => a.localeCompare(b, undefined, { numeric: true });
+
+function groupBy<T>(rows: T[], key: (row: T) => string): Map<string, T[]> {
+  const groups = new Map<string, T[]>();
+  for (const row of rows) {
+    const group = groups.get(key(row));
+    if (group) group.push(row);
+    else groups.set(key(row), [row]);
+  }
+  return groups;
+}
+
+function toExport(r: ExportJson): GraphExport {
+  const made = groupBy(r.claims, (v) => v.attributes.made_by);
+  const repeats = groupBy(r.repeats, (row) => row.source_id);
+  const highlights = groupBy(r.highlights, (row) => row.source_id);
+  const sources: ExportSource[] = r.sources
+    .map(({ v_id: id, attributes: a }) => ({
+      id,
+      title: a.title,
+      url: a.url,
+      savedAt: a.saved_at,
+      readAt: a.read_at === '' ? null : a.read_at,
+      tldr: parseTldr(a.tldr),
+      made: (made.get(id) ?? [])
+        .map((v) => ({ id: v.v_id, text: v.attributes.text, concepts: [...v.attributes.concepts].sort() }))
+        .sort((x, y) => byId(x.id, y.id)),
+      repeated: (repeats.get(id) ?? [])
+        .map((row) => ({
+          claimId: row.claim_id,
+          text: row.text,
+          claimText: row.claim_text,
+          sourceId: row.origin_id,
+          sourceTitle: row.origin_title,
+        }))
+        .sort((x, y) => byId(x.claimId, y.claimId)),
+      highlights: (highlights.get(id) ?? [])
+        .sort((x, y) => x.created_at.localeCompare(y.created_at))
+        .map((row) => row.text),
+    }))
+    .sort((x, y) => x.savedAt.localeCompare(y.savedAt) || byId(x.id, y.id));
+  return {
+    projects: r.projects
+      .map((v) => ({ id: v.v_id, name: v.attributes.name, description: v.attributes.description }))
+      .sort((x, y) => x.name.localeCompare(y.name) || byId(x.id, y.id)),
+    concepts: r.concepts
+      .map((v) => ({
+        id: v.v_id,
+        name: v.attributes.name,
+        summary: v.attributes.summary,
+        projects: [...v.attributes.projects].sort(),
+      }))
+      .sort((x, y) => x.name.localeCompare(y.name) || byId(x.id, y.id)),
+    sources,
   };
 }
 
@@ -382,10 +458,10 @@ export function createTigerGraph(config: TigerGraphConfig = tigerGraphConfigFrom
       if (!r) return { made: [], repeated: [] };
       const made = r.made
         .map((v) => ({ id: v.attributes.id, text: v.attributes.text }))
-        .sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
+        .sort((a, b) => byId(a.id, b.id));
       const repeated: RepeatedClaim[] = r.repeated
         .map((v) => ({ ...toMatch(v.attributes, v.attributes['@distance']), text: v.attributes['@repeat_text'] }))
-        .sort((a, b) => a.claimId.localeCompare(b.claimId, undefined, { numeric: true }));
+        .sort((a, b) => byId(a.claimId, b.claimId));
       return { made, repeated };
     },
 
@@ -461,17 +537,37 @@ export function createTigerGraph(config: TigerGraphConfig = tigerGraphConfigFrom
       return { nodes, links };
     },
 
-    async searchClaims() {
-      throw new Error('searchClaims: not built yet (card G3)');
+    async searchClaims(userId, embedding, k) {
+      if (k <= 0) return [];
+      const r = await query<{ hits?: VertexJson<ClaimAttrs>[] }>('search_claims', {
+        u: userParam(userId),
+        claim_vec: embedding,
+        k,
+      });
+      return (r?.hits ?? [])
+        .map((v) => toMatch(v.attributes, v.attributes['@distance']))
+        .sort((a, b) => a.distance - b.distance);
     },
-    async addHighlight() {
-      throw new Error('addHighlight: not built yet (card G3)');
+    async addHighlight(userId, h) {
+      if (!(await getSource(userId, h.sourceId))) throw new TigerGraphError(`Unknown source ${h.sourceId}`);
+      const edges: EdgeTree = {};
+      edge(edges, 'Highlight', h.id, 'HIGHLIGHTS', 'Source', h.sourceId);
+      const attrs = { text: h.text, created_at: h.createdAt };
+      const r = await upsert({ vertices: { Highlight: { [h.id]: wrap(attrs) } }, edges });
+      requireAccepted(`addHighlight ${h.id}`, r, 1, 1);
     },
-    async listHighlights() {
-      throw new Error('listHighlights: not built yet (card G3)');
+    async listHighlights(userId, sourceId): Promise<Highlight[]> {
+      const r = await query<{ highlights: VertexJson<HighlightAttrs>[] }>('source_highlights', {
+        u: userParam(userId),
+        src: sourceId,
+      });
+      return (r?.highlights ?? [])
+        .map(({ attributes: a }) => ({ id: a.id, sourceId, text: a.text, createdAt: a.created_at }))
+        .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
     },
-    async exportGraph() {
-      throw new Error('exportGraph: not built yet (card G3)');
+    async exportGraph(userId) {
+      const r = await query<ExportJson>('export_user', { u: userParam(userId) });
+      return r ? toExport(r) : { projects: [], concepts: [], sources: [] };
     },
 
     async deleteUser(userId) {

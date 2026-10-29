@@ -1,0 +1,16 @@
+CREATE OR REPLACE QUERY search_claims(VERTEX<User> u, LIST<FLOAT> claim_vec, INT k) FOR GRAPH SecondBrain SYNTAX v3 {
+  MapAccum<VERTEX, FLOAT> @@dist;
+  SumAccum<FLOAT> @distance;
+  SumAccum<STRING> @source_id, @source_title, @source_url;
+  SetAccum<STRING> @concepts;
+  start = {u};
+  mine = SELECT c FROM (x:start)-[:OWNS]->(s:Source)-[:MAKES]->(c:Claim);
+  IF mine.size() > 0 THEN
+    hits = vectorSearch({Claim.embedding}, claim_vec, k, {candidate_set: mine, distance_map: @@dist});
+    hits = SELECT c FROM (c:hits)<-[:MAKES]-(s:Source)
+           ACCUM c.@source_id = s.id, c.@source_title = s.title, c.@source_url = s.url
+           POST-ACCUM c.@distance = @@dist.get(c);
+    tagged = SELECT c FROM (c:hits)-[:ABOUT]->(t:Concept) ACCUM c.@concepts += t.name;
+    PRINT hits;
+  END;
+}

@@ -1,0 +1,6 @@
+CREATE OR REPLACE QUERY source_highlights(VERTEX<User> u, STRING src) FOR GRAPH SecondBrain SYNTAX v3 {
+  start = {u};
+  source = SELECT s FROM (x:start)-[:OWNS]->(s:Source) WHERE s.id == src;
+  highlights = SELECT h FROM (s:source)<-[:HIGHLIGHTS]-(h:Highlight);
+  PRINT highlights;
+}

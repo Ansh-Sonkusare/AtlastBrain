@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import type { SourceRecord } from './port';
+import { createMemoryGraph } from './memory';
+import type { GraphPort, SourceRecord } from './port';
 import { createTigerGraph, tigerGraphConfigFromEnv, waitForVectorIndex } from './tigergraph';
 
 const config = tigerGraphConfigFromEnv();
@@ -46,6 +47,7 @@ const run = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)
 const A = `g1test-${run}-a`;
 const B = `g1test-${run}-b`;
 const C = `g1test-${run}-c`;
+const D = `g1test-${run}-d`;
 const id = (s: string) => `${run}-${s}`;
 const day = (d: number) => `2026-10-${String(d).padStart(2, '0')}T12:00:00.000Z`;
 
@@ -110,7 +112,7 @@ describe.skipIf(!online)(suite, () => {
   }, 180_000);
 
   afterAll(async () => {
-    for (const u of [A, B, C]) await graph.deleteUser(u);
+    for (const u of [A, B, C, D]) await graph.deleteUser(u);
   }, 60_000);
 
   it('knownClaims returns only the asking user\'s read claims', async () => {
@@ -241,6 +243,100 @@ describe.skipIf(!online)(suite, () => {
     await fetch(`${config.url}/restpp/graph/${config.graph}/vertices/WebhookEvent/${id('evt')}`, { method: 'DELETE' });
   });
 
+  it('searchClaims ranks all of the user\'s own claims, read or not, and never another user\'s', async () => {
+    const probe = near(vX402, 11);
+    const forA = await graph.searchClaims(A, probe, 10);
+    expect(forA.map((m) => m.claimId).sort()).toEqual([id('a-read:0'), id('a-second:1'), id('a-unread:0')].sort());
+    expect(forA[0]).toMatchObject({
+      claimId: id('a-read:0'),
+      claimText: 'x402 batches payments',
+      sourceId: id('a-read'),
+      sourceTitle: 'Title a-read',
+      sourceUrl: `https://example.com/${run}/a-read`,
+      concepts: ['x402'],
+    });
+    expect(forA[0].distance).toBeLessThan(0.05);
+    expect(forA.map((m) => m.distance)).toEqual([...forA.map((m) => m.distance)].sort((a, b) => a - b));
+
+    expect((await graph.searchClaims(A, probe, 1)).map((m) => m.claimId)).toEqual([id('a-read:0')]);
+    expect((await graph.searchClaims(A, near(vErc, 12), 1)).map((m) => m.claimId)).toEqual([id('a-unread:0')]);
+    expect((await graph.searchClaims(B, probe, 10)).map((m) => m.claimId)).toEqual([id('b-read:0')]);
+    expect(await graph.searchClaims(C, probe, 10)).toEqual([]);
+    expect(await graph.searchClaims(`${run}-nobody`, probe, 10)).toEqual([]);
+    expect(await graph.searchClaims(A, probe, 0)).toEqual([]);
+  });
+
+  it('highlights are listed oldest first and only to the source owner', async () => {
+    const late = { id: id('hl-late'), sourceId: id('a-read'), text: 'late mark', createdAt: day(12) };
+    const early = { id: id('hl-early'), sourceId: id('a-read'), text: 'early mark', createdAt: day(11) };
+    await graph.addHighlight(A, late);
+    await graph.addHighlight(A, early);
+    expect(await graph.listHighlights(A, id('a-read'))).toEqual([early, late]);
+    expect(await graph.listHighlights(A, id('a-unread'))).toEqual([]);
+    expect(await graph.listHighlights(B, id('a-read'))).toEqual([]);
+
+    const stolen = { id: id('hl-stolen'), sourceId: id('a-read'), text: 'not yours', createdAt: day(13) };
+    await expect(graph.addHighlight(B, stolen)).rejects.toThrow(/Unknown source/);
+    await expect(graph.addHighlight(A, { ...stolen, sourceId: id('ghost') })).rejects.toThrow(/Unknown source/);
+    const res = await fetch(`${config.url}/restpp/graph/${config.graph}/vertices/Highlight/${encodeURIComponent(stolen.id)}`);
+    expect(((await res.json()) as { error: boolean }).error).toBe(true);
+    expect(await graph.listHighlights(A, id('a-read'))).toEqual([early, late]);
+  });
+
+  it('exportGraph returns what was written, equal to the memory graph', async () => {
+    const seed = async (g: GraphPort) => {
+      await g.ensureUser(D, 'd@example.com');
+      await g.upsertProject(D, { id: id('d-proj2'), name: 'Aproj', description: 'unlinked', embedding: vNew });
+      await g.upsertProject(D, { id: id('d-proj'), name: 'Dproj', description: 'd project', embedding: vOther });
+      await g.upsertConcept(D, { id: `${D}::alpha`, name: 'alpha', embedding: vX402 }, [id('d-proj')]);
+      await g.upsertConcept(D, { id: `${D}::beta`, name: 'beta', embedding: vErc }, []);
+      const tldr = { bullets: ['b1', 'b2'], whyItMatters: 'w', projectId: id('d-proj') };
+      await g.createSource(source(D, 'd-one', 3, { tldr }));
+      await g.markRead(D, id('d-one'), day(4));
+      await g.addClaim(id('d-one'), { id: id('d-one:0'), text: 'd first', embedding: vX402, firstSeen: day(3) });
+      await g.addClaim(id('d-one'), { id: id('d-one:1'), text: 'd second', embedding: vErc, firstSeen: day(3) });
+      await g.linkAbout(id('d-one:0'), `${D}::alpha`);
+      await g.linkAbout(id('d-one:0'), `${D}::beta`);
+      await g.createSource(source(D, 'd-blocked', 4, { status: 'blocked' }));
+      await g.createSource(source(D, 'd-two', 5));
+      await g.addClaim(id('d-two'), { id: id('d-two:0'), text: 'd third', embedding: vNew, firstSeen: day(5) });
+      await g.addRepeat(id('d-two'), id('d-one:0'), 'd restated', 0.03);
+      await g.addHighlight(D, { id: id('d-hl-2'), sourceId: id('d-one'), text: 'second mark', createdAt: day(7) });
+      await g.addHighlight(D, { id: id('d-hl-1'), sourceId: id('d-one'), text: 'first mark', createdAt: day(6) });
+    };
+    const memory = createMemoryGraph();
+    await seed(memory);
+    await seed(graph);
+
+    const exported = await graph.exportGraph(D);
+    expect(exported).toEqual(await memory.exportGraph(D));
+    expect(exported.projects.map((p) => p.name)).toEqual(['Aproj', 'Dproj']);
+    expect(exported.concepts).toEqual([
+      { id: `${D}::alpha`, name: 'alpha', summary: '', projects: ['Dproj'] },
+      { id: `${D}::beta`, name: 'beta', summary: '', projects: [] },
+    ]);
+    expect(exported.sources.map((s) => s.id)).toEqual([id('d-one'), id('d-two')]);
+    expect(exported.sources[0]).toMatchObject({
+      readAt: day(4),
+      tldr: { bullets: ['b1', 'b2'], whyItMatters: 'w', projectId: id('d-proj') },
+      made: [
+        { id: id('d-one:0'), text: 'd first', concepts: ['alpha', 'beta'] },
+        { id: id('d-one:1'), text: 'd second', concepts: [] },
+      ],
+      repeated: [],
+      highlights: ['first mark', 'second mark'],
+    });
+    expect(exported.sources[1]).toMatchObject({
+      readAt: null,
+      tldr: null,
+      repeated: [
+        { claimId: id('d-one:0'), text: 'd restated', claimText: 'd first', sourceId: id('d-one'), sourceTitle: 'Title d-one' },
+      ],
+      highlights: [],
+    });
+    expect(await graph.exportGraph(`${run}-nobody`)).toEqual({ projects: [], concepts: [], sources: [] });
+  });
+
   it('deleteUser leaves nothing', async () => {
     const owned = {
       User: [C],
@@ -248,8 +344,11 @@ describe.skipIf(!online)(suite, () => {
       Claim: [] as string[],
       Concept: [] as string[],
       Project: [] as string[],
+      Highlight: [] as string[],
     };
     await graph.createSource(source(C, 'c-src', 5));
+    await graph.addHighlight(C, { id: id('c-hl'), sourceId: id('c-src'), text: 'c mark', createdAt: day(5) });
+    owned.Highlight.push(id('c-hl'));
     await graph.addClaim(id('c-src'), { id: id('c-src:0'), text: 'c claim', embedding: vNew, firstSeen: day(5) });
     await graph.upsertProject(C, { id: id('c-proj'), name: 'P', description: 'd', embedding: vNew });
     await graph.upsertConcept(C, { id: `${C}::k`, name: 'k', embedding: vNew }, [id('c-proj')]);
