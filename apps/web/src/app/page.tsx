@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from "next/link";
 
 const USER = 'demo';
 
@@ -35,6 +36,7 @@ export default function Paste() {
   return (
     <main style={{ maxWidth: 720, margin: '2rem auto', display: 'grid', gap: 8, fontFamily: 'system-ui' }}>
       <h1>Second Brain: paste a page</h1>
+      <p><Link href="/dashboard">Open the dashboard</Link></p>
       <input placeholder="URL" value={url} onChange={(e) => setUrl(e.target.value)} />
       <input placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
       <textarea placeholder="Text" rows={12} value={text} onChange={(e) => setText(e.target.value)} />
