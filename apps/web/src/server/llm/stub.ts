@@ -26,6 +26,8 @@ function bestProject(claims: string[], projects: Project[]): Project | null {
   return best;
 }
 
+const STUB_ANSWER_CLAIMS = 3;
+
 export const stubProvider: LlmProvider = {
   async splitClaims(text) {
     const claims = text
@@ -64,5 +66,10 @@ export const stubProvider: LlmProvider = {
         : 'This is new to you.',
       projectId: project?.id ?? null,
     };
+  },
+
+  async answer(_question, claims) {
+    const used = claims.slice(0, STUB_ANSWER_CLAIMS);
+    return { answer: used.map((c) => c.claimText).join(' '), usedClaimIds: used.map((c) => c.claimId) };
   },
 };

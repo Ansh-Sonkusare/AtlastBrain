@@ -2,12 +2,12 @@ import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import type { Project } from '../types';
+import type { ClaimMatch, Project } from '../types';
 import { buildAnthropicRequest, createAnthropicProvider, HAIKU, SONNET } from './anthropic';
 import { assertUnderCap, CostCapError, priceUsd, recordCall, totalSpendUsd } from './cost';
 import { createLlm } from './index';
 import { buildOllamaRequest } from './ollama';
-import { splitPrompt } from './prompts';
+import { answerPrompt, splitPrompt } from './prompts';
 import { jsonSchemaFor } from './schemas';
 import { stubProvider } from './stub';
 import type { LlmProvider } from './types';
@@ -58,6 +58,43 @@ describe('stub provider', () => {
   it('returns a null project when nothing matches', async () => {
     const tldr = await stubProvider.writeTldr(['Completely unrelated astronomy facts appear.'], projects);
     expect(tldr.projectId).toBeNull();
+  });
+});
+
+const match = (n: number): ClaimMatch => ({
+  claimId: `c${n}`,
+  claimText: `Claim number ${n} says something.`,
+  distance: n / 10,
+  sourceId: `s${n}`,
+  sourceTitle: `Source ${n}`,
+  sourceUrl: `https://example.com/${n}`,
+  concepts: [],
+});
+
+describe('answer step', () => {
+  it('stub answers extractively from the top claims and returns their ids', async () => {
+    const res = await stubProvider.answer('what?', [1, 2, 3, 4].map(match));
+    expect(res).toEqual({
+      answer: 'Claim number 1 says something. Claim number 2 says something. Claim number 3 says something.',
+      usedClaimIds: ['c1', 'c2', 'c3'],
+    });
+  });
+
+  it('builds a prompt that restricts the answer to the given claims', () => {
+    const p = answerPrompt('Why batch?', [match(1)]);
+    expect(p.step).toBe('answer');
+    expect(p.system).toMatch(/only the numbered claims/);
+    expect(p.system).toMatch(/do not cover|not cover/);
+    expect(p.user).toContain('Question: Why batch?');
+    expect(p.user).toContain('- id=c1 | Claim number 1 says something. (from: Source 1)');
+  });
+
+  it('sends the anthropic answer request at low effort with its own schema', () => {
+    const req = buildAnthropicRequest(answerPrompt('q', [match(1)]), HAIKU);
+    expect(req.model).toBe('claude-haiku-5-5');
+    expect(req.output_config).toEqual({ effort: 'low', format: { type: 'json_schema', schema: jsonSchemaFor('answer') } });
+    expect(jsonSchemaFor('answer')).toMatchObject({ required: ['answer', 'usedClaimIds'], additionalProperties: false });
+    expect(buildOllamaRequest(answerPrompt('q', [match(1)])).format).toEqual(jsonSchemaFor('answer'));
   });
 });
 
@@ -112,7 +149,7 @@ describe('cost guard', () => {
     const fallback: LlmProvider = { ...stubProvider, splitClaims: async () => ({ claims: ['from fallback'] }) };
     const logs: string[] = [];
     const provider = createAnthropicProvider({
-      models: { split: HAIKU, link: HAIKU, tldr: HAIKU },
+      models: { split: HAIKU, link: HAIKU, tldr: HAIKU, answer: HAIKU },
       fallback,
       client: { messages: { create: async () => { apiCalls++; throw new Error('should not run'); } } } as never,
       log: (l) => logs.push(l),
@@ -129,11 +166,26 @@ describe('cost guard', () => {
       usage: { input_tokens: 1000, output_tokens: 100 },
     });
     const provider = createAnthropicProvider({
-      models: { split: HAIKU, link: HAIKU, tldr: HAIKU },
+      models: { split: HAIKU, link: HAIKU, tldr: HAIKU, answer: HAIKU },
       fallback: stubProvider,
       client: { messages: { create } } as never,
     });
     expect(await provider.splitClaims('text')).toEqual({ claims: ['a b c d'] });
+    expect(totalSpendUsd()).toBeCloseTo(0.00015);
+  });
+
+  it('parses an anthropic answer and logs its cost', async () => {
+    const create = async () => ({
+      stop_reason: 'end_turn',
+      content: [{ type: 'text', text: JSON.stringify({ answer: 'Because.', usedClaimIds: ['c1'] }) }],
+      usage: { input_tokens: 1000, output_tokens: 100 },
+    });
+    const provider = createAnthropicProvider({
+      models: { split: HAIKU, link: HAIKU, tldr: HAIKU, answer: HAIKU },
+      fallback: stubProvider,
+      client: { messages: { create } } as never,
+    });
+    expect(await provider.answer('q', [match(1)])).toEqual({ answer: 'Because.', usedClaimIds: ['c1'] });
     expect(totalSpendUsd()).toBeCloseTo(0.00015);
   });
 });

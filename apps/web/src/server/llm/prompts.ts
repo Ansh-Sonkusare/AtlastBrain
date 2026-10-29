@@ -1,4 +1,4 @@
-import type { Project } from '../types';
+import type { ClaimMatch, Project } from '../types';
 import type { StepName } from './schemas';
 
 export const MAX_INPUT_CHARS = 48_000;
@@ -42,5 +42,14 @@ export function tldrPrompt(newClaims: string[], projects: Project[]): StepPrompt
     system:
       'Write a TL;DR of only the new claims given. Return at most 3 short bullets, the id of the single project they matter most for (null if none fits), and one sentence on why they matter for that project. The why-it-matters sentence must name the project by its name, for example "This matters for x402 Sentinel because ...". Use a project id exactly as listed.',
     user: `Projects:\n${projectLines(projects)}\n\nNew claims:\n${newClaims.map((c) => `- ${c}`).join('\n')}`,
+  };
+}
+
+export function answerPrompt(question: string, claims: ClaimMatch[]): StepPrompt {
+  return {
+    step: 'answer',
+    system:
+      'You answer a question using only the numbered claims the user saved. Do not use outside knowledge. If the claims do not cover the question, say so in the answer and return no used ids. Keep the answer to 1 to 4 sentences. usedClaimIds lists the id of every claim you relied on, in the order you used them. Use ids exactly as listed.',
+    user: `Question: ${question}\n\nClaims:\n${claims.map((c) => `- id=${c.claimId} | ${c.claimText} (from: ${c.sourceTitle})`).join('\n')}`,
   };
 }

@@ -17,12 +17,19 @@ export const TldrResult = z.object({
 });
 export type TldrResult = z.infer<typeof TldrResult>;
 
-export type StepName = 'split' | 'link' | 'tldr';
+export const AnswerResult = z.object({
+  answer: z.string(),
+  usedClaimIds: z.array(z.string()),
+});
+export type AnswerResult = z.infer<typeof AnswerResult>;
+
+export type StepName = 'split' | 'link' | 'tldr' | 'answer';
 
 export const STEP_SCHEMAS = {
   split: SplitClaimsResult,
   link: LinkConceptsResult,
   tldr: TldrResult,
+  answer: AnswerResult,
 } as const;
 
 /** One JSON schema per step, shared by every provider. */

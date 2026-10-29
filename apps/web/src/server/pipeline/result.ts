@@ -24,3 +24,18 @@ export async function getSaveResult(
     ...(source.status === 'blocked' ? { blockedReason: 'quota' as const } : {}),
   };
 }
+
+export type SourceResponse = SaveResult & { highlights: string[] };
+
+/** What `GET /api/sources/:id` returns: the save result plus the user's highlights on the page. */
+export async function getSourceResponse(
+  deps: Pick<PipelineDeps, 'graph'>,
+  userId: string,
+  sourceId: string,
+): Promise<SourceResponse> {
+  const [result, highlights] = await Promise.all([
+    getSaveResult(deps, userId, sourceId),
+    deps.graph.listHighlights(userId, sourceId),
+  ]);
+  return { ...result, highlights: highlights.map((h) => h.text) };
+}

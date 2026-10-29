@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { assertUnderCap, CostCapError, recordCall } from './cost';
-import { linkPrompt, splitPrompt, tldrPrompt, truncateText, type StepPrompt } from './prompts';
+import { answerPrompt, linkPrompt, splitPrompt, tldrPrompt, truncateText, type StepPrompt } from './prompts';
 import { STEP_SCHEMAS, jsonSchemaFor, type StepName } from './schemas';
 import type { LlmProvider } from './types';
 
@@ -66,5 +66,7 @@ export function createAnthropicProvider(opts: AnthropicProviderOptions): LlmProv
       run({ ...linkPrompt(c, k, pr), step: 'link' }, () => fb.linkConcepts(c, k, pr)) as ReturnType<LlmProvider['linkConcepts']>,
     writeTldr: (n, pr) =>
       run({ ...tldrPrompt(n, pr), step: 'tldr' }, () => fb.writeTldr(n, pr)) as ReturnType<LlmProvider['writeTldr']>,
+    answer: (q, claims) =>
+      run({ ...answerPrompt(q, claims), step: 'answer' }, () => fb.answer(q, claims)) as ReturnType<LlmProvider['answer']>,
   };
 }

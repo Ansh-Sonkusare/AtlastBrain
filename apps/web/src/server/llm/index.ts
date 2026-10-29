@@ -25,12 +25,12 @@ export function createLlm(profile: string = process.env.LLM_PROFILE ?? 'stub'): 
       return createOllamaProvider();
     case 'cheap':
       return createAnthropicProvider({
-        models: { split: HAIKU, link: HAIKU, tldr: HAIKU },
+        models: { split: HAIKU, link: HAIKU, tldr: HAIKU, answer: HAIKU },
         fallback: createOllamaProvider(),
       });
     case 'demo':
       return createAnthropicProvider({
-        models: { split: SONNET, link: HAIKU, tldr: SONNET },
+        models: { split: SONNET, link: HAIKU, tldr: SONNET, answer: SONNET },
         fallback: createOllamaProvider(),
       });
   }

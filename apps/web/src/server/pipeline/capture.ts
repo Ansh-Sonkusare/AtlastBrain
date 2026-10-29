@@ -37,6 +37,22 @@ export interface CaptureOptions {
   admit?: () => Promise<Extract<SourceStatus, 'pending' | 'blocked'>>;
 }
 
+/** The same selection on the same source gets the same id, so a repeat save adds no second highlight. */
+function highlightId(sourceId: string, selection: string): string {
+  return `hl-${createHash('sha256').update(`${sourceId}\n${selection}`).digest('hex').slice(0, 32)}`;
+}
+
+async function saveSelection(deps: Pick<PipelineDeps, 'graph' | 'now'>, source: SourceRecord, selection?: string) {
+  const text = selection?.trim();
+  if (!text) return;
+  await deps.graph.addHighlight(source.userId, {
+    id: highlightId(source.id, text),
+    sourceId: source.id,
+    text,
+    createdAt: deps.now().toISOString(),
+  });
+}
+
 export async function capture(
   deps: Pick<PipelineDeps, 'graph' | 'now'>,
   userId: string,
@@ -49,7 +65,10 @@ export async function capture(
   const hash = contentHash(payload.text);
 
   const existing = await deps.graph.findSource(userId, url, hash);
-  if (existing) return { source: existing, duplicate: true };
+  if (existing) {
+    await saveSelection(deps, existing, payload.selection);
+    return { source: existing, duplicate: true };
+  }
 
   const status = (await options.admit?.()) ?? 'pending';
   const source: SourceRecord = {
@@ -67,5 +86,6 @@ export async function capture(
     tldr: null,
   };
   await deps.graph.createSource(source);
+  await saveSelection(deps, source, payload.selection);
   return { source, duplicate: false };
 }
