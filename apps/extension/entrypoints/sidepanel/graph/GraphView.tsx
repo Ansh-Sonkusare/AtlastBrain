@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createApi } from '@/lib/api';
 import type { Neighborhood } from '@/lib/api-types';
 import { loadSettings } from '@/lib/settings';
@@ -9,15 +9,16 @@ const ForceGraph2D = lazy(() => import('react-force-graph-2d'));
 const HEIGHT = 320;
 
 function useWidth() {
-  const ref = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
-  useEffect(() => {
-    const el = ref.current;
+  const observer = useRef<ResizeObserver | null>(null);
+  // A callback ref, because the graph box mounts only after the data loads.
+  const ref = useCallback((el: HTMLDivElement | null) => {
+    observer.current?.disconnect();
+    observer.current = null;
     if (!el) return;
     setWidth(el.clientWidth);
-    const ro = new ResizeObserver(([entry]) => entry && setWidth(Math.floor(entry.contentRect.width)));
-    ro.observe(el);
-    return () => ro.disconnect();
+    observer.current = new ResizeObserver(([entry]) => entry && setWidth(Math.floor(entry.contentRect.width)));
+    observer.current.observe(el);
   }, []);
   return { ref, width };
 }
