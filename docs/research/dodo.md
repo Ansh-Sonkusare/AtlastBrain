@@ -40,7 +40,7 @@ Optional: the official Next.js adapter `@dodopayments/nextjs` (latest 0.3.9, 202
 **Current API: Checkout Sessions, `client.checkoutSessions.create` (`POST /checkouts`).** Use it for both product types.
 
 - The Next.js adapter page calls Checkout Sessions "the recommended flow" and marks dynamic payment links as "deprecated": https://docs.dodopayments.com/developer-resources/nextjs-adaptor.md
-- In SDK 2.59.0, `client.payments.create` carries a bare `@deprecated` JSDoc tag (`resources/payments.d.ts` line 21). The `payment_link` boolean on `payments.create` / `subscriptions.create` is the old "dynamic payment link" path. Do not use it for new code.
+- In SDK 2.59.0, both `client.payments.create` (`resources/payments.d.ts` lines 20-23) and `client.subscriptions.create` (`resources/subscriptions.d.ts` lines 22-24) carry a bare `@deprecated` JSDoc tag. The `payment_link` boolean on `payments.create` / `subscriptions.create` is the old "dynamic payment link" path. Do not use it for new code.
 - Checkout Sessions page: https://docs.dodopayments.com/developer-resources/checkout-session.md . Subscription guide: https://docs.dodopayments.com/developer-resources/subscription-integration-guide.md
 
 ### Request fields (from `resources/checkout-sessions.d.ts` in dodopayments@2.59.0, and the docs page)
@@ -65,12 +65,20 @@ Optional: the official Next.js adapter `@dodopayments/nextjs` (latest 0.3.9, 202
 - Example response in test mode: `{ "session_id": "cks_Gi6KGJ2zFJo9rq9Ukifwa", "checkout_url": "https://test.checkout.dodopayments.com/session/cks_Gi6KGJ2zFJo9rq9Ukifwa" }` (subscription guide).
 - The checkout URL is single use. Sessions expire after 24 h (15 min when `confirm: true`).
 
+### Create the Dodo customer once per user (recommended, see mapping note below)
+
+```ts
+const c = await dodo.customers.create({ email: user.email, name: user.name, metadata: { user_id: user.id } });
+// save c.customer_id as user.dodoCustomerId
+// (Passing customer: { email, name } to checkoutSessions.create also works. By default Dodo matches an existing customer by email.)
+```
+
 ### (a) Subscription product
 
 ```ts
 const session = await dodo.checkoutSessions.create({
   product_cart: [{ product_id: 'pdt_SUBSCRIPTION_ID', quantity: 1 }],
-  customer: { email: user.email, name: user.name },
+  customer: { customer_id: user.dodoCustomerId }, // created earlier with dodo.customers.create (see below)
   return_url: `${process.env.APP_URL}/billing/success`,
   metadata: { user_id: user.id, kind: 'subscription' },
   // subscription_data: { trial_period_days: 14 }, // optional
@@ -83,7 +91,7 @@ const session = await dodo.checkoutSessions.create({
 ```ts
 const session = await dodo.checkoutSessions.create({
   product_cart: [{ product_id: 'pdt_CREDIT_PACK_ID', quantity: 1 }],
-  customer: { email: user.email, name: user.name },
+  customer: { customer_id: user.dodoCustomerId },
   return_url: `${process.env.APP_URL}/billing/success`,
   metadata: { user_id: user.id, kind: 'credit_pack', credits: 100 },
 });
@@ -93,7 +101,12 @@ const session = await dodo.checkoutSessions.create({
 
 - Yes for payments. The checkout request field is documented as "Additional metadata associated with the payment" (API reference, https://docs.dodopayments.com/api-reference/checkout-sessions/create.md). The `Payment` type has `metadata: Metadata` and `checkout_session_id`, so `payment.succeeded` carries `data.metadata.user_id`. The metadata guide says the API "returns metadata in API responses and webhooks": https://docs.dodopayments.com/api-reference/metadata.md
 - `GET /checkouts/{id}` does NOT return metadata (metadata guide, same page). Read it from the payment.
-- UNCONFIRMED: whether checkout-session `metadata` is copied onto the resulting Subscription object, so that `subscription.active` has `data.metadata.user_id`. The `Subscription` type has its own `metadata` field, and `subscription_data` in the checkout request has no metadata field. I found no doc sentence that says "copied". Official demo repos read metadata from both payment and subscription (`dodopayments/dodo-checkout-demo`, `src/app/api/verify-payment/route.ts`), which is not proof. **Safe design:** on `payment.succeeded` (which has `data.metadata.user_id` AND `data.subscription_id`), save a `subscription_id -> user_id` row. On every `subscription.*` event, look the user up by `data.subscription_id`, and fall back to `data.customer.customer_id` / `data.customer.email`. Also test it in test mode: create one checkout with metadata, then log the `subscription.active` body.
+- UNCONFIRMED: whether checkout-session `metadata` is copied onto the resulting Subscription object, so that `subscription.active` has `data.metadata.user_id`. The `Subscription` type has its own `metadata` field, and `subscription_data` in the checkout request has no metadata field. I found no doc sentence that says "copied". Official demo repos read metadata from both payment and subscription (`dodopayments/dodo-checkout-demo`, `src/app/api/verify-payment/route.ts`), which is not proof. **Safe design (do not rely on `payment.succeeded` arriving first):** the guide says the first `payment.succeeded` arrives 2-10 minutes after checkout, and with a trial it does not fire at checkout at all. So a `subscription_id -> user_id` row written on `payment.succeeded` is often missing when `subscription.active` arrives. Map on the customer instead, because every payment and subscription event carries `data.customer.customer_id`:
+1. Before the first checkout, create the Dodo customer yourself: `const c = await dodo.customers.create({ email, name, metadata: { user_id } })` (this call is in the metadata guide, https://docs.dodopayments.com/api-reference/metadata.md). Save `c.customer_id` on your user row.
+2. Pass `customer: { customer_id: c.customer_id }` to `checkoutSessions.create` (`CustomerRequest` accepts the attach-existing form).
+3. In every webhook handler, find your user by `data.customer.customer_id`. Use `data.subscription_id` for the subscription row.
+4. Keep checkout `metadata` as a second channel on payments only. `CustomerLimitedDetails.metadata` is optional in the type. Whether webhooks fill it is UNCONFIRMED, so do not rely on it.
+5. Test it in test mode: create one checkout with metadata and log the `subscription.active` body.
 - You can also set metadata on a subscription later: `PATCH /subscriptions/{id}` accepts metadata (https://docs.dodopayments.com/features/subscription.md line ~780).
 
 ---
@@ -105,7 +118,7 @@ const session = await dodo.checkoutSessions.create({
 - Dodo webhooks follow the Standard Webhooks spec: https://docs.dodopayments.com/developer-resources/webhooks.md and https://standardwebhooks.com/
 - Headers: `webhook-id`, `webhook-timestamp` (Unix seconds), `webhook-signature` (one or more space-separated `v1,<base64>` values).
 - Signed content: `{webhook-id}.{webhook-timestamp}.{raw body}`. Algorithm: HMAC-SHA256, base64. Key: the secret with the `whsec_` prefix removed, then base64-decoded. Reject timestamps more than 5 minutes off (the Standard Webhooks libraries do this). Source: "Manual Verification" section of the webhooks page above.
-- The secret shows on the endpoint's Overview tab (Dashboard -> Developer -> Webhooks -> your endpoint). Dodo gives it in `whsec_...` form. Endpoints are per mode, so create the test-mode endpoint in test mode. Rotation keeps the old secret valid 24 h.
+- The secret shows on the endpoint's Overview tab (Dashboard -> Developer -> Webhooks -> your endpoint). The docs say "If it starts with `whsec_`, remove that prefix", which implies a `whsec_` prefix but does not state Dodo always issues one. The `standardwebhooks` constructor strips the prefix if present and also accepts a bare base64 secret, so pass the dashboard value unchanged. Endpoints are per mode, so create the test-mode endpoint in test mode. Rotation keeps the old secret valid 24 h.
 - Delivery: 8 attempts total (immediate, 5 s, 5 min, 30 min, 2 h, 5 h, 10 h, 10 h). 30 s timeout. Any non-2xx is a failure. Events can arrive out of order and can repeat, so dedupe on `webhook-id` and order by the payload `timestamp`. Source: same page.
 - Local forwarding: `dodo wh listen` (CLI, test-mode keys only) forwards real signed test events to localhost. `dodo wh trigger` sends mock payloads that are NOT signed, so use `client.webhooks.unsafeUnwrap` for those. Dashboard -> Webhook -> Testing tab -> "Send example" sends signed examples. Source: same page.
 
@@ -154,6 +167,7 @@ VERIFIED LOCALLY on 2026-10-29 with `standardwebhooks@1.1.1` and `dodopayments@2
 
 ```ts
 // scripts/send-test-webhook.ts   (run: npx tsx scripts/send-test-webhook.ts)
+import crypto from 'node:crypto';
 import { Webhook } from 'standardwebhooks';
 
 const secret = process.env.DODO_PAYMENTS_WEBHOOK_KEY!; // must be the same whsec_... your server uses.
@@ -278,7 +292,7 @@ Dodo's native credits would replace your counter, but they add setup (create the
 Source: https://docs.dodopayments.com/miscellaneous/testing-process.md and https://docs.dodopayments.com/miscellaneous/test-mode-vs-live-mode.md
 
 - "Every API endpoint is available in test mode" and webhooks fire for test transactions "the same way as in production".
-- Success cards (any future expiry, CVV `123`):
+- Success cards (the docs say use expiry `06/32` (or `12/34`) and CVV `123` for all test cards):
 
 | Region | Brand | Number | Expiry |
 |---|---|---|---|
@@ -314,7 +328,7 @@ const pack = await dodo.products.create({
   name: '100 credits',
   description: 'One-time credit pack',
   tax_category: 'digital_products',
-  price: { type: 'one_time_price', currency: 'USD', price: 500, discount: 0 },
+  price: { type: 'one_time_price', currency: 'USD', price: 500 },
   metadata: { credits: 100 },
 });
 // pack.product_id -> use in product_cart
@@ -327,7 +341,6 @@ const pro = await dodo.products.create({
     type: 'recurring_price',
     currency: 'USD',
     price: 900,
-    discount: 0,
     payment_frequency_count: 1,
     payment_frequency_interval: 'Month',   // billing cycle
     subscription_period_count: 20,          // total life of the subscription
@@ -338,7 +351,7 @@ const pro = await dodo.products.create({
 
 **Gotcha, from the SDK doc comment:** `subscription_period_*` is the total lifetime, not the billing cycle. Dodo recommends `20` `Year` (also the maximum) for "renews until cancelled". "Do not set the subscription period to `1` `month` for a monthly plan: the subscription then expires after one month." (`RecurringPrice.subscription_period_count`). The subscription guide repeats the warning.
 
-Not run against the API: I had no test-mode key. The three calls above (both `products.create` calls and the `checkoutSessions.create` call from Section 2) type-check with `tsc --strict` against dodopayments@2.59.0 (VERIFIED LOCALLY, with `discount` omitted). The response field is `product_id` (`Product` type). `discount` is deprecated in favour of `discount_bps`, so drop the `discount: 0` lines.
+Not run against the API: I had no test-mode key. The three calls above (both `products.create` calls and the `checkoutSessions.create` call from Section 2) type-check with `tsc --strict` against dodopayments@2.59.0 (VERIFIED LOCALLY). The response field is `product_id` (`Product` type).
 
 ---
 
