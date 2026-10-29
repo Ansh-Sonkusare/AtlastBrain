@@ -31,6 +31,7 @@ interface ConceptRow extends ConceptRecord {
 export function createMemoryGraph(): GraphPort {
   const users = new Map<string, User>();
   const sources = new Map<string, SourceRecord>();
+  const webhookEvents = new Set<string>();
   const claims = new Map<string, ClaimRow>();
   const repeats = new Map<string, { claimId: string; text: string; distance: number }[]>();
   const reads = new Set<string>();
@@ -85,8 +86,18 @@ export function createMemoryGraph(): GraphPort {
     },
     async countSavesSince(userId, since) {
       let n = 0;
-      for (const s of sources.values()) if (s.userId === userId && s.savedAt >= since) n++;
+      for (const s of sources.values()) if (s.userId === userId && s.savedAt >= since && s.status !== 'blocked') n++;
       return n;
+    },
+
+    async findUserByDodoCustomer(customerId) {
+      for (const u of users.values()) if (u.dodoCustomerId === customerId) return { ...u };
+      return null;
+    },
+    async recordWebhookEvent(eventId) {
+      if (webhookEvents.has(eventId)) return false;
+      webhookEvents.add(eventId);
+      return true;
     },
 
     async findSource(userId, url, contentHash) {
@@ -110,6 +121,11 @@ export function createMemoryGraph(): GraphPort {
         .filter((s) => s.status === 'pending')
         .sort((a, b) => a.savedAt.localeCompare(b.savedAt))
         .slice(0, limit)
+        .map((s) => ({ ...s }));
+    },
+    async listSourcesByStatus(userId, status) {
+      return [...sources.values()]
+        .filter((s) => s.userId === userId && s.status === status)
         .map((s) => ({ ...s }));
     },
     async markRead(userId, sourceId, at) {

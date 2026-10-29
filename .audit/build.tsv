@@ -4,3 +4,4 @@ ts	phase	decision	why	evidence	result
 2026-10-29T06:45:32Z	tigergraph	proved candidate_set vectorSearch scoped by a READ traversal on CE 4.2.5	riskiest unknown; every lane depends on it	/tmp/tgtest/q.gsql: u1 sees c1 dist 0, u2 sees c2 dist 0.006	VERIFIED
 2026-10-29T06:45:32Z	merge	merged P1 (LLM providers, cost guard, embeddings)	lead re-ran checks on main	merge commit; 17 tests pass; tsc clean	VERIFIED
 2026-10-29T06:50:01Z	merge	merged P2 (capture, processSource, memory graph, worker)	lead re-ran checks on main	merge commit; 26 tests	VERIFIED
+2026-10-29T06:50:58Z	merge	merged X1 extension; changed REPEATS to keep the repeating sentence	panel must show the new article's sentence, not only the old one	commits on main; ext 11 tests, web 26 tests	VERIFIED

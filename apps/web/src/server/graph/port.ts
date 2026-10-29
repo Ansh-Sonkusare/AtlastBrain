@@ -61,7 +61,11 @@ export interface GraphPort {
   ensureUser(userId: string, email: string): Promise<User>;
   getUser(userId: string): Promise<User | null>;
   updateUser(userId: string, patch: Partial<Pick<User, 'plan' | 'credits' | 'dodoCustomerId'>>): Promise<User>;
+  /** Sources saved at or after `since`, not counting `blocked` ones (a blocked save used no quota). */
   countSavesSince(userId: string, since: string): Promise<number>;
+  findUserByDodoCustomer(customerId: string): Promise<User | null>;
+  /** Records a webhook id. Returns false when it was already recorded, so each event applies once. */
+  recordWebhookEvent(eventId: string, at: string): Promise<boolean>;
 
   findSource(userId: string, url: string, contentHash: string): Promise<SourceRecord | null>;
   createSource(source: SourceRecord): Promise<void>;
@@ -71,6 +75,7 @@ export interface GraphPort {
     patch: Partial<Pick<SourceRecord, 'status' | 'newRatio' | 'tldr' | 'readAt' | 'title'>>,
   ): Promise<void>;
   listPendingSources(limit: number): Promise<SourceRecord[]>;
+  listSourcesByStatus(userId: string, status: SourceStatus): Promise<SourceRecord[]>;
   markRead(userId: string, sourceId: string, at: string): Promise<void>;
 
   /** Nearest claims among sources this user has READ, nearest first, distance < maxDist. */
