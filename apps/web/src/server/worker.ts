@@ -1,7 +1,6 @@
-import { createLlm } from './llm';
-import { createDeps, type PipelineDeps } from './pipeline/deps';
+import { getDeps } from './deps';
+import type { PipelineDeps } from './pipeline/deps';
 import { processSource } from './pipeline/process';
-import { selectGraph } from './pipeline/select-graph';
 
 const POLL_MS = 1000;
 
@@ -30,8 +29,7 @@ export async function runWorker(
 }
 
 async function main(): Promise<void> {
-  const graph = await selectGraph(process.env.GRAPH ?? 'tigergraph');
-  const deps = createDeps({ graph, llm: createLlm() });
+  const deps = await getDeps();
   const abort = new AbortController();
   for (const sig of ['SIGINT', 'SIGTERM'] as const) process.on(sig, () => abort.abort());
   console.log(`worker started (GRAPH=${process.env.GRAPH ?? 'tigergraph'}, LLM_PROFILE=${process.env.LLM_PROFILE ?? 'stub'})`);
