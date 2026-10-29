@@ -1,71 +1,133 @@
-import { useState } from 'react';
-import { Account } from './Account';
-import { Ask } from './Ask';
-import { NewToMe } from './NewToMe';
-import { LearnNext } from './LearnNext';
+import { useEffect, useState } from 'react';
+import type { Settings } from '@/lib/api-types';
+import { loadSettings } from '@/lib/settings';
+import { buildReceipt, dashboardUrl, type Receipt } from '@/lib/view-model';
 import { QuickNote } from './QuickNote';
-import { GraphView } from './graph/GraphView';
-import { ShowQuery } from './graph/ShowQuery';
 import { useSave } from './useSave';
 
-type Tab = 'new' | 'ask' | 'learn' | 'graph';
+const RECENT_LIMIT = 5;
 
-const TABS: { id: Tab; label: string }[] = [
-  { id: 'new', label: "What's new to me" },
-  { id: 'ask', label: 'Ask' },
-  { id: 'learn', label: 'Learn next' },
-  { id: 'graph', label: 'Graph' },
-];
+function open(url: string) {
+  void browser.tabs.create({ url });
+}
+
+function Ledger({ receipt }: { receipt: Receipt }) {
+  const total = receipt.newCount + receipt.repeatCount;
+  return (
+    <div
+      className="ledger"
+      role="img"
+      aria-label={`${receipt.newCount} new claims, ${receipt.repeatCount} repeated`}
+    >
+      {total === 0 ? (
+        <span className="seg empty" style={{ flexGrow: 1 }} />
+      ) : (
+        <>
+          <span className="seg new" style={{ flexGrow: receipt.newCount }} />
+          <span className="seg repeat" style={{ flexGrow: receipt.repeatCount }} />
+        </>
+      )}
+    </div>
+  );
+}
+
+function ReceiptCard({ receipt, settings }: { receipt: Receipt; settings: Settings }) {
+  return (
+    <section className="receipt" aria-labelledby="receipt-title">
+      <h2 id="receipt-title">{receipt.title}</h2>
+      <Ledger receipt={receipt} />
+      <dl className="tally">
+        <div className="new">
+          <dd>{receipt.newCount}</dd>
+          <dt>new</dt>
+        </div>
+        <div className="repeat">
+          <dd>{receipt.repeatCount}</dd>
+          <dt>repeated</dt>
+        </div>
+        <div>
+          <dd>{receipt.percentNew}%</dd>
+          <dt>new ratio</dt>
+        </div>
+      </dl>
+      {receipt.nothingNew && <p className="muted">Nothing new here. You already know this.</p>}
+      {receipt.partial && <p className="status warn">Only part of this page could be checked.</p>}
+      <button className="primary wide" onClick={() => open(dashboardUrl(settings.apiBase, settings.userId, receipt.sourceId))}>
+        Open in dashboard
+      </button>
+    </section>
+  );
+}
 
 export function App() {
-  const [tab, setTab] = useState<Tab>('new');
   const { state, me, savePage, saveNote } = useSave();
+  const [settings, setSettings] = useState<Settings | null>(null);
+  const [recent, setRecent] = useState<Receipt[]>([]);
   const busy = state.phase === 'checking' || state.phase === 'blocked';
+
+  useEffect(() => {
+    void loadSettings().then(setSettings);
+  }, []);
+
+  useEffect(() => {
+    if (state.phase !== 'done') return;
+    const receipt = buildReceipt(state.result);
+    setRecent((list) => [receipt, ...list.filter((r) => r.sourceId !== receipt.sourceId)].slice(0, RECENT_LIMIT));
+  }, [state]);
+
+  const done = state.phase === 'done' ? buildReceipt(state.result) : null;
+  const earlier = recent.filter((r) => r.sourceId !== done?.sourceId);
 
   return (
     <main>
       <header>
         <h1>Second Brain</h1>
         {me?.user.plan === 'pro' && <span className="badge">Pro</span>}
-        <button className="primary" disabled={busy} onClick={savePage}>
-          Save this page
-        </button>
+        {settings && (
+          <a href={dashboardUrl(settings.apiBase, settings.userId)} onClick={(e) => { e.preventDefault(); open(e.currentTarget.href); }}>
+            Open dashboard
+          </a>
+        )}
       </header>
-      <p className="hint">Alt+S saves the current tab.</p>
 
-      <nav role="tablist">
-        {TABS.map((t) => (
-          <button key={t.id} role="tab" aria-selected={tab === t.id} onClick={() => setTab(t.id)}>
-            {t.label}
-          </button>
-        ))}
-      </nav>
+      <button className="primary wide" disabled={busy} onClick={savePage}>
+        Save this page
+      </button>
+      <p className="muted">Alt+S saves the current tab.</p>
 
-      {tab === 'new' && (
-        <section>
-          {state.phase === 'idle' && <p className="muted">Save a page to see what is new to you.</p>}
-          {state.phase === 'checking' && <p className="status">checking against your brain…</p>}
-          {state.phase === 'blocked' && (
-            <p className="status warn">
-              Free limit reached. Finish checkout in the new tab. This page saves on its own when the plan changes.
-            </p>
-          )}
-          {state.phase === 'error' && <p className="status error">{state.message}</p>}
-          {state.phase === 'done' && <NewToMe result={state.result} />}
+      <div aria-live="polite">
+        {state.phase === 'checking' && <p className="status">Checking against your brain…</p>}
+        {state.phase === 'blocked' && (
+          <p className="status warn">
+            Free limit reached. Finish checkout in the new tab. This page saves on its own when the plan changes.
+          </p>
+        )}
+        {state.phase === 'error' && <p className="status error">{state.message}</p>}
+      </div>
+      {done && settings && <ReceiptCard receipt={done} settings={settings} />}
+
+      {earlier.length > 0 && settings && (
+        <section aria-labelledby="recent-title">
+          <h3 id="recent-title">Saved this session</h3>
+          <ul className="recent">
+            {earlier.map((r) => (
+              <li key={r.sourceId}>
+                <a
+                  href={dashboardUrl(settings.apiBase, settings.userId, r.sourceId)}
+                  onClick={(e) => { e.preventDefault(); open(e.currentTarget.href); }}
+                >
+                  {r.title}
+                </a>
+                <span className="muted">
+                  {r.newCount} new, {r.repeatCount} repeated
+                </span>
+              </li>
+            ))}
+          </ul>
         </section>
       )}
-      {tab === 'ask' && <Ask />}
-      {tab === 'learn' && <LearnNext refreshKey={state.phase === 'done' ? state.result.sourceId : ''} />}
-      {tab === 'graph' && (
-        <>
-          <GraphView sourceId={state.phase === 'done' ? state.result.sourceId : ''} />
-          <ShowQuery />
-        </>
-      )}
 
-      <Account />
-
-      <QuickNote disabled={busy} onSave={(text) => { setTab('new'); return saveNote(text); }} />
+      <QuickNote disabled={busy} onSave={saveNote} />
     </main>
   );
 }

@@ -53,30 +53,6 @@ export interface SaveResult {
   highlights?: string[];
 }
 
-export interface LearnNextItem {
-  concept: string;
-  project: string;
-  unreadSources: { id: string; title: string; url: string }[];
-}
-
-export interface GraphNode {
-  id: string;
-  type: 'Source' | 'Claim' | 'Concept' | 'Project';
-  label: string;
-  repeat?: boolean;
-}
-
-export interface GraphLink {
-  source: string;
-  target: string;
-  type: 'MAKES' | 'REPEATS' | 'ABOUT' | 'RELEVANT_TO';
-}
-
-export interface Neighborhood {
-  nodes: GraphNode[];
-  links: GraphLink[];
-}
-
 export interface CaptureResponse {
   sourceId: string;
   status: 'pending' | 'done' | 'blocked';
@@ -94,8 +70,3 @@ export interface Settings {
   userId: string;
 }
 
-export interface BrainAnswer {
-  question: string;
-  answer: string;
-  citations: ClaimMatch[];
-}
