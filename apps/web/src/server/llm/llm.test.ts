@@ -219,7 +219,7 @@ describe('request builders', () => {
     expect(req.format).toEqual(jsonSchemaFor('split'));
   });
   it('sends no integer bounds, which Claude structured output rejects', () => {
-    for (const step of ['split', 'link', 'tldr'] as const) {
+    for (const step of ['split', 'link', 'tldr', 'answer'] as const) {
       expect(JSON.stringify(jsonSchemaFor(step))).not.toMatch(/"(minimum|maximum)"/);
     }
   });

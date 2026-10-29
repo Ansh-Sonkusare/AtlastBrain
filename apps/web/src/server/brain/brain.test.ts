@@ -141,7 +141,6 @@ describe('export', () => {
     expect(note).toContain('## New claims');
     expect(note).toMatch(/- The x402 protocol allows .* \[\[[^\]]+\]\]/);
     expect(note).toContain('## Highlights\n\n> Facilitators enable\n> a resource server.');
-    console.log(note);
   });
 
   it('lists repeats with a link to the source that made the claim, and backlinks on concepts', async () => {

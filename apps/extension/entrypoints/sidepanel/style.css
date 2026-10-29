@@ -35,3 +35,8 @@ input { font: inherit; padding: 6px; border: 1px solid #c4c4cc; border-radius: 6
 .legend { list-style: none; display: flex; flex-wrap: wrap; gap: 4px 12px; padding: 0; margin: 6px 0; font-size: 12px; }
 .legend .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 4px; }
 .graph-box { width: 100%; height: 320px; border: 1px solid #e0e0e6; border-radius: 6px; overflow: hidden; }
+.account { display: flex; gap: 6px; margin: 6px 0; }
+button.danger { color: #b3261e; border-color: #e3b5b2; }
+.gsql { font-family: ui-monospace, monospace; font-size: 11px; background: #f4f4f6; border-radius: 6px; padding: 8px; overflow: auto; max-height: 320px; white-space: pre; }
+blockquote { margin: 4px 0; padding: 4px 10px; border-left: 3px solid #c4c4cc; color: #444; }
+.answer p { margin: 8px 0; }

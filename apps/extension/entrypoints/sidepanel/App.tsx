@@ -1,14 +1,18 @@
 import { useState } from 'react';
+import { Account } from './Account';
+import { Ask } from './Ask';
 import { NewToMe } from './NewToMe';
 import { LearnNext } from './LearnNext';
 import { QuickNote } from './QuickNote';
 import { GraphView } from './graph/GraphView';
+import { ShowQuery } from './graph/ShowQuery';
 import { useSave } from './useSave';
 
-type Tab = 'new' | 'learn' | 'graph';
+type Tab = 'new' | 'ask' | 'learn' | 'graph';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'new', label: "What's new to me" },
+  { id: 'ask', label: 'Ask' },
   { id: 'learn', label: 'Learn next' },
   { id: 'graph', label: 'Graph' },
 ];
@@ -50,8 +54,16 @@ export function App() {
           {state.phase === 'done' && <NewToMe result={state.result} />}
         </section>
       )}
+      {tab === 'ask' && <Ask />}
       {tab === 'learn' && <LearnNext refreshKey={state.phase === 'done' ? state.result.sourceId : ''} />}
-      {tab === 'graph' && <GraphView sourceId={state.phase === 'done' ? state.result.sourceId : ''} />}
+      {tab === 'graph' && (
+        <>
+          <GraphView sourceId={state.phase === 'done' ? state.result.sourceId : ''} />
+          <ShowQuery />
+        </>
+      )}
+
+      <Account />
 
       <QuickNote disabled={busy} onSave={(text) => { setTab('new'); return saveNote(text); }} />
     </main>

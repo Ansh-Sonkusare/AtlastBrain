@@ -20,6 +20,14 @@ export function NewToMe({ result }: { result: SaveResult }) {
   return (
     <div>
       <h2>{view.title || view.url}</h2>
+      {view.highlights.length > 0 && (
+        <div className="highlights">
+          <h3>Your highlights</h3>
+          {view.highlights.map((h) => (
+            <blockquote key={h}>{h}</blockquote>
+          ))}
+        </div>
+      )}
       {view.partial && <p className="status warn">Only part of this page could be checked.</p>}
 
       {view.nothingNew ? (

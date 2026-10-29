@@ -11,6 +11,7 @@
  * The user `smoke-<timestamp>` and everything under it is deleted at the end.
  */
 import assert from 'node:assert/strict';
+import { unzipSync } from 'fflate';
 import { embed } from '../src/server/embed';
 import { selectGraph } from '../src/server/pipeline/select-graph';
 
@@ -64,13 +65,15 @@ async function main(): Promise<void> {
     assert.equal(noUser.headers.get('access-control-allow-origin'), '*');
     ok('401 without x-user-id');
 
-    for (const path of ['/api/capture', '/api/sources/x', '/api/me', '/api/graph/x', '/api/vocabulary', '/api/learn-next', '/api/billing/checkout']) {
+    for (const path of ['/api/capture', '/api/sources/x', '/api/me', '/api/graph/x', '/api/vocabulary', '/api/learn-next', '/api/billing/checkout', '/api/ask', '/api/export', '/api/gsql/known_claims']) {
       const pre = await call('OPTIONS', path, { headers: { origin: 'chrome-extension://x', 'access-control-request-method': 'POST' } });
       assert.equal(pre.status, 204, path);
       assert.equal(pre.headers.get('access-control-allow-origin'), '*');
       assert.match(pre.headers.get('access-control-allow-headers') ?? '', /x-user-id/);
       assert.match(pre.headers.get('access-control-allow-methods') ?? '', /POST/);
     }
+    const preDelete = await call('OPTIONS', '/api/me', { headers: { origin: 'chrome-extension://x', 'access-control-request-method': 'DELETE' } });
+    assert.match(preDelete.headers.get('access-control-allow-methods') ?? '', /DELETE/);
     ok('OPTIONS preflight on every route');
 
     const bad = await call('POST', '/api/capture', { body: { text: '' } });
@@ -96,11 +99,38 @@ async function main(): Promise<void> {
     assert.ok(result.tldr?.bullets?.length > 0);
     ok('poll to done', `${latencyMs} ms capture to done, ${result.verdicts.length} claims`);
 
-    const dup = await call('POST', '/api/capture', { body: { ...payload, url: 'https://example.com/smoke-article' } });
+    const selection = 'Batching many small payments into one settlement cuts the per-call overhead for agents.';
+    const dup = await call('POST', '/api/capture', { body: { ...payload, url: 'https://example.com/smoke-article', selection } });
     assert.equal(dup.status, 202);
     assert.equal(dup.body.sourceId, sourceId);
     assert.equal(dup.body.status, 'done');
     ok('dedup capture returns the same source, done');
+
+    const withHighlight = await call('GET', `/api/sources/${sourceId}`);
+    assert.deepEqual(withHighlight.body.highlights, [selection]);
+    ok('highlight from a deduplicated capture', JSON.stringify(withHighlight.body.highlights.length));
+
+    const noQuestion = await call('POST', '/api/ask', { body: { question: '  ' } });
+    assert.equal(noQuestion.status, 400);
+    const ask = await call('POST', '/api/ask', { body: { question: 'How do agents pay for web resources?' } });
+    assert.equal(ask.status, 200);
+    assert.equal(ask.body.question, 'How do agents pay for web resources?');
+    assert.ok(typeof ask.body.answer === 'string' && ask.body.answer.length > 0);
+    assert.ok(ask.body.citations.length > 0, 'cites at least one claim');
+    assert.ok(ask.body.citations.every((c: { sourceId: string }) => c.sourceId === sourceId), 'cites only this user claims');
+    ok('ask', `${ask.body.citations.length} citations`);
+
+    const gsqlNames = ['known_claims', 'search_claims', 'learn_next', 'neighborhood'];
+    for (const name of gsqlNames) {
+      const q = await call('GET', `/api/gsql/${name}`);
+      assert.equal(q.status, 200, name);
+      assert.match(q.headers.get('content-type') ?? '', /text\/plain/);
+      assert.match(q.body as string, new RegExp(`QUERY\\s+${name}`, 'i'));
+    }
+    for (const name of ['delete_user', '..%2Fgraph%2Fschema', 'schema']) {
+      assert.equal((await call('GET', `/api/gsql/${name}`)).status, 404, name);
+    }
+    ok('gsql allow-list', gsqlNames.join(', '));
 
     const missing = await call('GET', '/api/sources/does-not-exist');
     assert.equal(missing.status, 404);
@@ -160,6 +190,28 @@ async function main(): Promise<void> {
     assert.equal(blockedPoll.body.status, 'blocked');
     assert.equal(blockedPoll.body.blockedReason, 'quota');
     ok('over-limit capture is blocked with a checkoutUrl');
+
+    const free = await call('GET', '/api/export');
+    assert.equal(free.status, 402);
+    assert.match(free.body.checkoutUrl, /^https?:\/\//);
+    ok('export is 402 with a checkoutUrl for a free user');
+
+    await graph.updateUser(USER, { plan: 'pro' });
+    const zipRes = await fetch(`${BASE}/api/export`, { headers: H });
+    assert.equal(zipRes.status, 200);
+    assert.match(zipRes.headers.get('content-type') ?? '', /application\/zip/);
+    const zip = new Uint8Array(await zipRes.arrayBuffer());
+    assert.deepEqual([...zip.slice(0, 4)], [0x50, 0x4b, 0x03, 0x04]);
+    const zipNames = Object.keys(unzipSync(zip));
+    assert.ok(zipNames.includes('Sources/Smoke article.md'), zipNames.join(', '));
+    assert.ok(zipNames.includes('Projects/Smoke Sentinel.md'));
+    assert.ok(zipNames.some((n) => n.startsWith('Concepts/')));
+    ok('export zip for a Pro user', `${zip.length} bytes, ${zipNames.length} files`);
+
+    const del = await call('DELETE', '/api/me');
+    assert.equal(del.status, 204);
+    assert.equal((await call('GET', `/api/sources/${sourceId}`)).status, 404);
+    ok('DELETE /api/me removes the user data');
 
     console.log(`PASS  capture-to-done latency ${latencyMs} ms`);
   } finally {

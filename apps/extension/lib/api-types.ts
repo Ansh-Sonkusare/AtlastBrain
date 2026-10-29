@@ -49,6 +49,8 @@ export interface SaveResult {
   verdicts: ClaimVerdict[];
   tldr: Tldr | null;
   blockedReason?: 'quota';
+  /** Only on `GET /api/sources/:id`. */
+  highlights?: string[];
 }
 
 export interface LearnNextItem {
@@ -90,4 +92,10 @@ export interface MeResponse {
 export interface Settings {
   apiBase: string;
   userId: string;
+}
+
+export interface BrainAnswer {
+  question: string;
+  answer: string;
+  citations: ClaimMatch[];
 }

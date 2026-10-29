@@ -1,4 +1,4 @@
-import type { ClaimMatch, SaveResult, Tldr } from './api-types';
+import type { BrainAnswer, ClaimMatch, SaveResult, Tldr } from './api-types';
 
 export const NOTHING_NEW_BELOW = 0.2;
 
@@ -24,6 +24,7 @@ export interface NewToMeView {
   /** Distinct earlier sources, in first-seen order. */
   readBefore: SourceLink[];
   tldr: Tldr | null;
+  highlights: string[];
   partial: boolean;
 }
 
@@ -57,6 +58,24 @@ export function buildNewToMeView(result: SaveResult): NewToMeView {
     hiddenRepeats: nothingNew ? repeats : [],
     readBefore,
     tldr: nothingNew ? null : result.tldr,
+    highlights: result.highlights ?? [],
     partial: result.status === 'partial',
   };
+}
+
+export interface AnswerView {
+  answer: string;
+  /** Cited claims, once each, with the page they came from. */
+  citations: { claimId: string; text: string; sourceTitle: string; sourceUrl: string }[];
+}
+
+export function buildAnswerView(res: BrainAnswer): AnswerView {
+  const seen = new Set<string>();
+  const citations: AnswerView['citations'] = [];
+  for (const c of res.citations) {
+    if (seen.has(c.claimId)) continue;
+    seen.add(c.claimId);
+    citations.push({ claimId: c.claimId, text: c.claimText, sourceTitle: c.sourceTitle, sourceUrl: c.sourceUrl });
+  }
+  return { answer: res.answer.trim(), citations };
 }
