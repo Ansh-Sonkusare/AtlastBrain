@@ -7,3 +7,5 @@ ts	phase	decision	why	evidence	result
 2026-10-29T06:50:58Z	merge	merged X1 extension; changed REPEATS to keep the repeating sentence	panel must show the new article's sentence, not only the old one	commits on main; ext 11 tests, web 26 tests	VERIFIED
 2026-10-29T06:52:57Z	merge	merged X2 graph view	lead re-ran checks on main	ext 16 tests, build ok	VERIFIED (no browser render yet)
 2026-10-29T06:56:11Z	incident	B1 agent ran pkill -x node; no node processes remain on the machine	a subagent cleaned up its dev server too broadly; user must be told	ps shows no node processes after B1 finished	REPORT TO USER
+2026-10-29T07:09:15Z	merge	merged G1 TigerGraph schema, 12 queries, client	lead re-ran all tests on main with TG live and read known_claims.gsql	61 tests pass; graph/queries/known_claims.gsql	VERIFIED
+2026-10-29T07:12:52Z	merge	merged W1 API routes, worker wiring, paste page	agent api-smoke passed on next dev + worker + TG; lead re-ran unit tests	merge commit; smoke output in W1 report; 61 tests	VERIFIED (lead will rerun smoke in D1)

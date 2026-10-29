@@ -27,7 +27,7 @@ export interface PipelineDeps {
 }
 
 export function configFromEnv(env: NodeJS.ProcessEnv = process.env): PipelineConfig {
-  const noveltyMaxDist = env.NOVELTY_MAX_DIST === undefined ? 0.35 : Number(env.NOVELTY_MAX_DIST);
+  const noveltyMaxDist = env.NOVELTY_MAX_DIST === undefined ? 0.36 : Number(env.NOVELTY_MAX_DIST);
   if (!Number.isFinite(noveltyMaxDist) || noveltyMaxDist <= 0) {
     throw new Error(`Invalid NOVELTY_MAX_DIST: ${env.NOVELTY_MAX_DIST}`);
   }
