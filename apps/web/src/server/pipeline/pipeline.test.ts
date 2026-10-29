@@ -71,6 +71,9 @@ describe('pipeline', () => {
       'Zero-knowledge proofs let a verifier confirm a statement without learning the secret behind it.',
       'Sourdough starters need regular feedings of flour and water to stay active.',
     ]);
+    expect(repeats.map((v) => v.text).sort()).toEqual(
+      PARAPHRASE_ARTICLE.split(/(?<=[.!?])\s+/).slice(0, 2).sort(),
+    );
     expect(result.newRatio).toBe(0.5);
     expect(result.tldr?.bullets).toEqual(fresh.map((v) => v.text));
   });

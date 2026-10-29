@@ -32,7 +32,7 @@ export function createMemoryGraph(): GraphPort {
   const users = new Map<string, User>();
   const sources = new Map<string, SourceRecord>();
   const claims = new Map<string, ClaimRow>();
-  const repeats = new Map<string, string[]>();
+  const repeats = new Map<string, { claimId: string; text: string; distance: number }[]>();
   const reads = new Set<string>();
   const concepts = new Map<string, ConceptRow>();
   const about = new Map<string, Set<string>>();
@@ -132,11 +132,11 @@ export function createMemoryGraph(): GraphPort {
       requireSource(sourceId);
       claims.set(claim.id, { ...claim, madeBy: sourceId });
     },
-    async addRepeat(sourceId, claimId) {
+    async addRepeat(sourceId, claimId, text, distance) {
       requireSource(sourceId);
       if (!claims.has(claimId)) throw new Error(`Unknown claim ${claimId}`);
       const list = repeats.get(sourceId) ?? [];
-      if (!list.includes(claimId)) list.push(claimId);
+      if (!list.some((r) => r.claimId === claimId)) list.push({ claimId, text, distance });
       repeats.set(sourceId, list);
     },
     async sourceClaims(userId, sourceId): Promise<SourceClaims> {
@@ -144,7 +144,10 @@ export function createMemoryGraph(): GraphPort {
       const made = [...claims.values()]
         .filter((c) => c.madeBy === sourceId)
         .map((c) => ({ id: c.id, text: c.text }));
-      const repeated = (repeats.get(sourceId) ?? []).map((id) => matchFor(claims.get(id)!, 0));
+      const repeated = (repeats.get(sourceId) ?? []).map((r) => ({
+        ...matchFor(claims.get(r.claimId)!, r.distance),
+        text: r.text,
+      }));
       return { made, repeated };
     },
 
@@ -181,7 +184,7 @@ export function createMemoryGraph(): GraphPort {
         claimIds.some((id) => {
           const made = claims.get(id)?.madeBy;
           if (made && isRead(userId, made)) return true;
-          return [...repeats.entries()].some(([sid, list]) => list.includes(id) && isRead(userId, sid));
+          return [...repeats.entries()].some(([sid, list]) => list.some((r) => r.claimId === id) && isRead(userId, sid));
         });
       const items: LearnNextItem[] = [];
       for (const concept of concepts.values()) {
@@ -232,7 +235,7 @@ export function createMemoryGraph(): GraphPort {
         }
       };
       for (const c of claims.values()) if (c.madeBy === sourceId) addClaimTree(c, 'MAKES');
-      for (const id of repeats.get(sourceId) ?? []) addClaimTree(claims.get(id)!, 'REPEATS');
+      for (const r of repeats.get(sourceId) ?? []) addClaimTree(claims.get(r.claimId)!, 'REPEATS');
       const seen = new Set<string>();
       const uniqueLinks = links.filter((l) => {
         const key = `${l.type}|${l.source}|${l.target}`;

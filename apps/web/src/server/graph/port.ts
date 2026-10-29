@@ -42,9 +42,14 @@ export interface ProjectRecord extends Project {
   embedding: number[];
 }
 
+/** A claim this source restated: `text` is the sentence in this source, `claimText` the original. */
+export interface RepeatedClaim extends ClaimMatch {
+  text: string;
+}
+
 export interface SourceClaims {
   made: { id: string; text: string }[];
-  repeated: ClaimMatch[];
+  repeated: RepeatedClaim[];
 }
 
 /**
@@ -71,7 +76,7 @@ export interface GraphPort {
   /** Nearest claims among sources this user has READ, nearest first, distance < maxDist. */
   knownClaims(userId: string, embedding: number[], maxDist: number): Promise<ClaimMatch[]>;
   addClaim(sourceId: string, claim: NewClaim): Promise<void>;
-  addRepeat(sourceId: string, claimId: string): Promise<void>;
+  addRepeat(sourceId: string, claimId: string, text: string, distance: number): Promise<void>;
   sourceClaims(userId: string, sourceId: string): Promise<SourceClaims>;
 
   listConcepts(userId: string): Promise<ConceptRecord[]>;

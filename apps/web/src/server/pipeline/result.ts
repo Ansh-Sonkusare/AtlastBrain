@@ -11,7 +11,7 @@ export async function getSaveResult(
   const { made, repeated } = await deps.graph.sourceClaims(userId, sourceId);
   const verdicts: ClaimVerdict[] = [
     ...made.map((c): ClaimVerdict => ({ kind: 'new', text: c.text, claimId: c.id })),
-    ...repeated.map((match): ClaimVerdict => ({ kind: 'repeat', text: match.claimText, match })),
+    ...repeated.map(({ text, ...match }): ClaimVerdict => ({ kind: 'repeat', text, match })),
   ];
   return {
     sourceId: source.id,

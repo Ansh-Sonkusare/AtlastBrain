@@ -113,7 +113,7 @@ export async function processSource(
       const embedding = vectors[i]!;
       const [match] = await graph.knownClaims(userId, embedding, config.noveltyMaxDist);
       if (match) {
-        await graph.addRepeat(sourceId, match.claimId);
+        await graph.addRepeat(sourceId, match.claimId, text, match.distance);
       } else {
         const claim = { id: randomUUID(), text, embedding };
         await graph.addClaim(sourceId, { ...claim, firstSeen: deps.now().toISOString() });
