@@ -1,6 +1,6 @@
 # Task cards
 
-**Status: done (2026-10-29).** Every card is merged on `main`. Outputs: the app in `apps/web`, the extension in `apps/extension`, GSQL in `graph/`, the end-to-end check `apps/web/scripts/e2e.ts`, the browser check `scripts/ui-check.mjs`, and the run log `.audit/build.tsv`. Setup and stage steps are in `README.md` and `DEMO.md`.
+**Status: round 1 done (2026-10-29); round 2 (G3, A10) in progress.** Round 1 cards are merged on `main`. Outputs: the app in `apps/web`, the extension in `apps/extension`, GSQL in `graph/`, the end-to-end check `apps/web/scripts/e2e.ts`, the browser check `scripts/ui-check.mjs`, and the run log `.audit/build.tsv`. Setup and stage steps are in `README.md` and `DEMO.md`.
 
 Each card is one unattended session. Read `CLAUDE.md` and `docs/PRD.md` first. A card is done only when every "Done when" check passes on your branch. The lead re-runs the same checks after the merge.
 
@@ -153,3 +153,40 @@ The Graph tab draws `GET /api/graph/:sourceId` with `react-force-graph-2d`: sour
 ## D1: end-to-end check, demo reset, docs
 
 Lead-owned. `scripts/e2e.ts` runs the PRD's must-work list against the real stack (TigerGraph, `next dev`, worker, stub LLM): seed, save the overlap article, check repeats and TL;DR, learn next, hit the quota, pay through the dev checkout, see the plan flip and the save complete, save the voice note. `DEMO.md` and `README.md` explain setup, the hand-back steps, and what each sponsor's judges see.
+
+
+# Round 2: the rest of the TigerGraph features
+
+The lead added the contract in commit `3a85720`: `searchClaims`, `addHighlight`, `listHighlights` and `exportGraph` on `GraphPort`, the types `Highlight`, `BrainAnswer` and `GraphExport` in `types.ts`, and their in-memory versions in `memory.ts`. The TigerGraph client has placeholders that throw. G3 and A10 run in parallel.
+
+## G3: TigerGraph queries for Ask the brain, highlights, and export
+
+Lane: graph. Files: `graph/queries/**`, `apps/web/src/server/graph/tigergraph.ts`, `apps/web/src/server/graph/tigergraph.test.ts`, `docs/research/tigergraph.md`. Do not change `port.ts`, `types.ts`, or `memory.ts`; if the contract is wrong, write `BLOCKED.md` and stop.
+
+Build:
+- `search_claims` GSQL query: `vectorSearch` over `Claim.embedding` with the candidate set "claims MAKES by sources this user OWNS", top `k`, returning the same fields as `known_claims` (distance, the source that made it, concept names). This is the GraphRAG step of Ask the brain: one query, vector search scoped by a traversal, expanded one hop to Source and Concept.
+- Highlights: write a `Highlight` vertex and a `HIGHLIGHTS` edge to the source through REST++ (check the source is owned by the user first). Add a `source_highlights` query, user-scoped through OWNS.
+- `export_user` query: everything `GraphExport` needs for one user in as few round trips as is sensible (projects, concepts with their project names, sources that are not `blocked` with made claims and their concept names, repeats with the original claim and its source, highlights). Start from `{u}` and walk OWNS and READ, like every other user query.
+- Replace the four placeholders in `tigergraph.ts`. Match the in-memory semantics in `memory.ts` exactly, including ordering.
+- Live tests in `tigergraph.test.ts` for each method, with their own user ids, including: user A's `searchClaims` never returns user B's claims; highlights on a source of another user are refused; `exportGraph` contents equal what was written; `deleteUser` removes highlights.
+- Load the new queries with `pnpm --filter web graph:load` (no `--reset`; the `demo` user must survive).
+
+Done when: `graph:load` exits 0 and lists the new queries; `pnpm --filter web typecheck` passes; `pnpm --filter web test` passes with the worker stopped, and the TigerGraph suite is not skipped. Commit `G3: ...`, tag `g3`.
+
+## A10: Ask the brain, highlights, Obsidian export, delete account, GSQL on screen
+
+Lane: product. Files: `apps/web/src/server/llm/**`, `apps/web/src/server/pipeline/capture.ts`, `apps/web/src/server/brain/**` (new), `apps/web/src/app/api/ask/**`, `apps/web/src/app/api/export/**`, `apps/web/src/app/api/me/**`, `apps/web/src/app/api/gsql/**`, `apps/web/scripts/api-smoke.ts`, `apps/web/package.json` (only to add `fflate`), `apps/extension/**`. Build against the memory graph; do not touch `graph/` or `tigergraph.ts`.
+
+Build:
+- `LlmProvider.answer(question, claims: ClaimMatch[])` returning `{ answer: string, usedClaimIds: string[] }` with a JSON schema, in every provider: `stub` (extractive: the top claims, joined, all ids), `anthropic` (Haiku in `cheap`, Sonnet in `demo`, effort low, same rules as the other calls, cost-logged), `ollama`. The prompt says to answer only from the given claims and to say so when they do not cover the question.
+- `askBrain(deps, userId, question)` in `server/brain/`: embed the question, `searchClaims(userId, vec, 8)`, call `answer`, return `BrainAnswer` with citations in the order the answer used them. With no claims, answer "Nothing in your brain about that yet." without calling the LLM.
+- `POST /api/ask` `{ question }` → `BrainAnswer`, through the existing `withUser` wrapper. Asks are not metered for the hackathon.
+- Highlights: when a capture has a non-empty `selection`, call `addHighlight` for the source (new or deduplicated). Return highlights in `GET /api/sources/:id` as `highlights: string[]`; add the optional field to the extension's api types.
+- `GET /api/export` → a zip (with `fflate`) of markdown: `Sources/<title>.md` (url, saved date, TL;DR, new claims with `[[Concept]]` links, "Repeats" with `[[Other source title]]` links, highlights as quotes), `Concepts/<name>.md` (summary, `[[Project]]` links, backlinks list of sources), `Projects/<name>.md`. Sanitize file names; keep wikilink targets equal to file names. Pro only (the PRD lists the export under Pro): free users get 402 with `{ checkoutUrl }`.
+- `DELETE /api/me` → `deleteUser`, returns 204.
+- `GET /api/gsql/:name` returns the text of `graph/queries/<name>.gsql` for a fixed allow-list (`known_claims`, `search_claims`, `learn_next`, `neighborhood`), 404 otherwise. Read the file from the repo at request time.
+- Extension: an "Ask" tab (question box, answer, cited claims each with its source link); in the Graph tab a "Show the query" toggle that displays `known_claims` GSQL in a monospace block; an "Export to Obsidian" button (shows the checkout link on 402); a "Delete my data" button behind `confirm()`. Show highlights under the saved page in What's new to me.
+- Unit tests: `askBrain` with the memory graph and stub LLM (cites only the user's own claims; empty brain message), highlight on capture and on dedup, the export markdown (file names, wikilinks resolve to existing files), the gsql allow-list, extension tests for the new pure helpers.
+- Extend `api-smoke.ts` to cover ask, export (status and zip magic bytes for a Pro user), delete, gsql.
+
+Done when: `pnpm --filter web typecheck`, `pnpm --filter web test` (worker stopped), and `pnpm --filter extension compile build test` pass. The api-smoke run against TigerGraph happens after G3 merges, by the lead. Commit `A10: ...`, tag `a10`.
