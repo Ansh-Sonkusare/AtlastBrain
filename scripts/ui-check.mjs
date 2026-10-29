@@ -72,6 +72,7 @@ try {
   await web.screenshot({ path: out('6-after-pay'), fullPage: true });
   const me = await (await fetch('http://localhost:3000/api/me', { headers: { 'x-user-id': 'demo' } })).json();
   log('plan after clicking Pay (test):', me.user.plan);
+  if (me.user.plan !== 'pro') throw new Error(`plan is ${me.user.plan} after Pay (test)`);
 } finally {
   await ctx.close();
 }

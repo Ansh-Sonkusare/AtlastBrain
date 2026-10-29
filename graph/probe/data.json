@@ -1,0 +1,5 @@
+{"vertices":{"PUser":{"u1":{"email":{"value":"a"}},"u2":{"email":{"value":"b"}}},
+"PSource":{"s1":{"title":{"value":"S1"}},"s2":{"title":{"value":"S2"}}},
+"PClaim":{"c1":{"text":{"value":"x"},"embedding":{"value":[1,0,0]}},"c2":{"text":{"value":"y"},"embedding":{"value":[0.9,0.1,0]}},"c3":{"text":{"value":"z"},"embedding":{"value":[0,1,0]}}}},
+"edges":{"PUser":{"u1":{"PREAD":{"PSource":{"s1":{}}}},"u2":{"PREAD":{"PSource":{"s2":{}}}}},
+"PSource":{"s1":{"PMAKES":{"PClaim":{"c1":{},"c3":{}}}},"s2":{"PMAKES":{"PClaim":{"c2":{}}}}}}}

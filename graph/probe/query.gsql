@@ -1,0 +1,10 @@
+USE GRAPH Probe
+CREATE OR REPLACE QUERY probe_known(VERTEX<PUser> u, LIST<FLOAT> v, FLOAT max_dist) SYNTAX v3 {
+  MapAccum<VERTEX, FLOAT> @@dist;
+  start = {u};
+  mine = SELECT c FROM (s:start)-[:PREAD]->(src:PSource)-[:PMAKES]->(c:PClaim);
+  near = vectorSearch({PClaim.embedding}, v, 5, {candidate_set: mine, distance_map: @@dist});
+  known = SELECT h FROM (h:near) WHERE @@dist.get(h) < max_dist;
+  PRINT known, @@dist;
+}
+INSTALL QUERY probe_known
