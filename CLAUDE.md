@@ -31,3 +31,4 @@ Next.js 16 has breaking changes. Read the guide in `apps/web/node_modules/next/d
 - App cards treat the GSQL queries in `graph/` as a fixed API and never edit them.
 - Never commit `.env`. Never force-push. Never rewrite tagged history.
 - Each test run that writes to TigerGraph uses its own user id, so parallel runs do not collide.
+- Stop the worker before `pnpm --filter web test`. The worker processes every pending source, so it races the TigerGraph test that lists pending sources.

@@ -79,3 +79,7 @@ Each sentence goes through `knownClaims` at the chosen threshold. "Nearest sourc
 - Set `NOVELTY_MAX_DIST=0.36`. The code default in `pipeline/deps.ts` is still 0.35. G2 did not change pipeline code, so the lead decides whether to move the default.
 - The margin is thin. The loosest same pair is 0.347 and the closest different pair is 0.378, so only 0.347 to 0.378 separates the labels and 0.36 sits inside it.
 - On x402-overlap, sentence 7 (outputSchema) is the one miss. It lies 0.324 from the verify and settle article, nearer than sentence 5 (0.347), which must count as known. No threshold gets both right.
+
+## Stage article change (lead, after G2)
+
+Sentence 7 of `x402-overlap` (the `outputSchema` line) sat at distance 0.324 from a seed claim, inside the threshold, so the article scored 2 of 12 new. That is under the 20% "nothing new" rule, and the demo save showed no TL;DR. Following the PRD's risk mitigation ("pick demo articles that overlap clearly with the seed set"), the lead replaced that sentence in `fixtures/seed/demo.json` with a clearly new fact about the x402 licence. The tables above are the measurement on the original sentence and are kept as they were. The threshold, the seed corpus, and `pairs.json` did not change.

@@ -3,7 +3,7 @@
     "id": "x402-overlap",
     "url": "https://example.com/demo/how-autonomous-agents-pay-for-apis-with-x402",
     "title": "How Autonomous Agents Pay for APIs With x402",
-    "body": "With x402, an autonomous program can buy access to a web resource and skip signup, keys, and recurring plans. The signed payment payload travels in the X-PAYMENT header of the retried request, in base64 encoding. The x402 protocol also supports payments on the Solana network in addition to EVM chains. Because the facilitator covers the blockchain gas fee, the paying client does not have to hold a native gas token. Verification through a facilitator checks a payload against the requirements and never broadcasts an on-chain transaction. Even an untrustworthy facilitator is able to withhold settlement or stall a payment for an extended period. Payment requirements may include an outputSchema field that describes the format of the response from the paid endpoint. Per-call overhead falls under batching, since a single blockchain transaction takes the place of many individual transfers. If one payment inside a batch fails, the batch must be retried or split so the remaining payments are not blocked. Every authorization carries a random nonce, which stops the token contract from accepting a replayed copy. The x402 Bazaar is a discovery catalog where agents can find paid endpoints to call. A typical safeguard is a cap per request that refuses any payment requirement exceeding a configured amount.",
+    "body": "With x402, an autonomous program can buy access to a web resource and skip signup, keys, and recurring plans. The signed payment payload travels in the X-PAYMENT header of the retried request, in base64 encoding. The x402 protocol also supports payments on the Solana network in addition to EVM chains. Because the facilitator covers the blockchain gas fee, the paying client does not have to hold a native gas token. Verification through a facilitator checks a payload against the requirements and never broadcasts an on-chain transaction. Even an untrustworthy facilitator is able to withhold settlement or stall a payment for an extended period. The x402 reference implementation is published as open source under the Apache 2.0 license on GitHub. Per-call overhead falls under batching, since a single blockchain transaction takes the place of many individual transfers. If one payment inside a batch fails, the batch must be retried or split so the remaining payments are not blocked. Every authorization carries a random nonce, which stops the token contract from accepting a replayed copy. The x402 Bazaar is a discovery catalog where agents can find paid endpoints to call. A typical safeguard is a cap per request that refuses any payment requirement exceeding a configured amount.",
     "labels": [
       {
         "sentence": "With x402, an autonomous program can buy access to a web resource and skip signup, keys, and recurring plans.",
@@ -42,7 +42,7 @@
         "matchSentence": "A dishonest facilitator can still refuse to settle a payment or delay settlement for a long time."
       },
       {
-        "sentence": "Payment requirements may include an outputSchema field that describes the format of the response from the paid endpoint.",
+        "sentence": "The x402 reference implementation is published as open source under the Apache 2.0 license on GitHub.",
         "known": false,
         "matches": null,
         "matchSentence": null

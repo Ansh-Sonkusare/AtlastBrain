@@ -109,10 +109,14 @@ export async function processSource(
     const { claims: texts } = await llm.splitClaims(source.body);
     const vectors = await deps.embed(texts);
     const created: NewClaimRow[] = [];
+    const repeated = new Set<string>();
     for (const [i, text] of texts.entries()) {
       const embedding = vectors[i]!;
-      const [match] = await graph.knownClaims(userId, embedding, config.noveltyMaxDist);
+      const matches = await graph.knownClaims(userId, embedding, config.noveltyMaxDist);
+      // One REPEATS edge per (source, claim): a second sentence restating the same claim takes the next match.
+      const match = matches.find((m) => !repeated.has(m.claimId)) ?? matches[0];
       if (match) {
+        repeated.add(match.claimId);
         await graph.addRepeat(sourceId, match.claimId, text, match.distance);
       } else {
         const claim = { id: randomUUID(), text, embedding };
