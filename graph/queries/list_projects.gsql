@@ -1,0 +1,5 @@
+CREATE OR REPLACE QUERY list_projects(VERTEX<User> u) FOR GRAPH SecondBrain SYNTAX v3 {
+  start = {u};
+  projects = SELECT p FROM (x:start)-[:OWNS]->(p:Project);
+  PRINT projects WITH VECTOR;
+}

@@ -8,7 +8,8 @@
     "start": "next start",
     "test": "vitest run",
     "typecheck": "next typegen && tsc --noEmit",
-    "worker": "tsx src/server/worker.ts"
+    "worker": "tsx src/server/worker.ts",
+    "graph:load": "tsx scripts/graph-load.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.3.0",

@@ -1,0 +1,16 @@
+CREATE OR REPLACE QUERY known_claims(VERTEX<User> u, LIST<FLOAT> claim_vec, FLOAT max_dist, INT k) FOR GRAPH SecondBrain SYNTAX v3 {
+  MapAccum<VERTEX, FLOAT> @@dist;
+  SumAccum<FLOAT> @distance;
+  SumAccum<STRING> @source_id, @source_title, @source_url;
+  SetAccum<STRING> @concepts;
+  start = {u};
+  mine = SELECT c FROM (s:start)-[:READ]->(src:Source)-[:MAKES]->(c:Claim);
+  IF mine.size() > 0 THEN
+    near = vectorSearch({Claim.embedding}, claim_vec, k, {candidate_set: mine, distance_map: @@dist});
+    known = SELECT c FROM (c:near) WHERE @@dist.get(c) < max_dist POST-ACCUM c.@distance = @@dist.get(c);
+    made = SELECT c FROM (c:known)<-[:MAKES]-(src:Source)
+           ACCUM c.@source_id = src.id, c.@source_title = src.title, c.@source_url = src.url;
+    tagged = SELECT c FROM (c:known)-[:ABOUT]->(t:Concept) ACCUM c.@concepts += t.name;
+    PRINT known;
+  END;
+}

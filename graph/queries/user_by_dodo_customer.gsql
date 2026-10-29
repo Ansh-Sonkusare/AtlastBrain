@@ -1,0 +1,5 @@
+CREATE OR REPLACE QUERY user_by_dodo_customer(STRING customer_id) FOR GRAPH SecondBrain SYNTAX v3 {
+  all_users = {User.*};
+  users = SELECT x FROM (x:all_users) WHERE customer_id != "" AND x.dodo_customer_id == customer_id;
+  PRINT users;
+}

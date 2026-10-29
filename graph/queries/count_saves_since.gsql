@@ -1,0 +1,7 @@
+CREATE OR REPLACE QUERY count_saves_since(VERTEX<User> u, STRING since) FOR GRAPH SecondBrain SYNTAX v3 {
+  SumAccum<INT> @@n;
+  start = {u};
+  saves = SELECT s FROM (x:start)-[:OWNS]->(s:Source)
+          WHERE s.saved_at >= since AND s.status != "blocked" ACCUM @@n += 1;
+  PRINT @@n AS n;
+}

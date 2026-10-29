@@ -1,0 +1,5 @@
+CREATE OR REPLACE QUERY list_concepts(VERTEX<User> u) FOR GRAPH SecondBrain SYNTAX v3 {
+  start = {u};
+  concepts = SELECT k FROM (x:start)-[:OWNS]->(k:Concept);
+  PRINT concepts WITH VECTOR;
+}

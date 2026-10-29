@@ -355,7 +355,7 @@ curl -u "tigergraph:tigergraph" -H 'Content-Type: application/json' -X POST \
 ```
 Note the two body formats differ: RESTPP takes bare `{"param": value}`; the GSQL endpoint takes `{"parameters": {...}}` ([comparison table, GSQL-EP](https://www.tigergraph.com/docs/tigergraph-server/4.2/api/gsql-endpoints)).
 
-- Vertex params: RESTPP POST uses `{"v":{"id":"Jenny","type":"Person"}}` or just the id when typed; `SET<VERTEX<T>>` is an array of `{"id":...}` ([REST-EP](https://www.tigergraph.com/docs/tigergraph-server/4.2/api/built-in-endpoints)).
+- Vertex params: RESTPP POST needs `{"v":{"id":"Jenny","type":"Person"}}`. A bare id string in the JSON body fails on 4.2.5 with `'id' is not found in the VERTEX parameter` (checked in G1); a bare id works only in a GET query string. `SET<VERTEX<T>>` is an array of `{"id":...}` ([REST-EP](https://www.tigergraph.com/docs/tigergraph-server/4.2/api/built-in-endpoints)).
 - Response shape: `{"version":{...},"error":false,"message":"","results":[ {...one object per PRINT...} ]}` ([q3.out](https://raw.githubusercontent.com/tigergraph/ecosys/master/tutorials/vector/q3.out)). With `PRINT v WITH VECTOR`, each vertex has `v_id`, `v_type`, `attributes`, and `Embeddings: {emb1: [...]}`. `PRINT @@distances` gives `{"@@distances": {"Scott": 0, "Steven": 0.0325563}}`. Floats come back at about 8 digits.
 - Query timeout: default is 16 seconds; override with the `GSQL-TIMEOUT` header ([query-operations 4.2](https://www.tigergraph.com/docs/gsql-ref/4.2/querying/query-operations)).
 
@@ -397,3 +397,19 @@ Not documented (UNCONFIRMED, test in your container):
 - Behaviour when the query vector dimension differs from the schema dimension.
 - `vectorSearch` inside `INTERPRET QUERY`.
 - Multi-statement bodies for `POST /gsql/v1/statements`.
+
+---
+
+## 8. Checked on the live 4.2.5 container (card G1)
+
+- `POST /gsql/v1/statements` runs multi-statement scripts. Failures still return HTTP 200; the body holds `Semantic Check Error`, `Type Check Error`, `Encountered "..."` or `could not`. `CREATE QUERY` with an error is saved as a draft.
+- `DROP GRAPH g` refuses while queries exist. Use `DROP GRAPH g CASCADE`.
+- Each schema change job takes about 31 s. Installing 12 queries in one `INSTALL QUERY` takes about 2.5 min.
+- An empty `candidate_set` returns no hits, not a global search.
+- A missing vertex in a `VERTEX<T>` query parameter returns `error: true`, message `Failed to convert user vertex id for parameter u`.
+- A built-in GET of a missing vertex returns `error: true`, code `601`.
+- Edge upserts create missing endpoint vertices unless you pass `vertex_must_exist=true`. With it, the response lists `skipped_edges` and `edge_vertices_not_exist`.
+- `new_vertex_only=true` skips existing vertices and `update_vertex_only=true` skips missing ones; `accepted_vertices` tells which happened. An upsert that sends only some attributes keeps the others. A vertex with a vector counts twice in `accepted_vertices`.
+- After a vector upsert, `/restpp/vector/status/<graph>/<type>/<attr>` turns `Rebuild_processing` at once and back to `Ready_for_query` after about 1 s.
+- `PRINT s WITH VECTOR` puts vectors under `Embeddings.<attr>`, and returns `[]` for a vector the index has not taken in yet. The built-in vertex GET never returns vectors.
+- In a query, an alias may not reuse a parameter name (SEM-1613).
