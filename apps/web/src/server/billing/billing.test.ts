@@ -177,6 +177,15 @@ describe('handleDodoEvent', () => {
     expect(await graph.listSourcesByStatus('u1', 'blocked')).toHaveLength(0);
   });
 
+  it('spends a credit for each blocked save a credit pack admits', async () => {
+    const graph = await setup();
+    await save(graph, 'u1', 30);
+    for (let i = 0; i < 3; i++) await graph.createSource(source('u1', 'blocked'));
+    await handleDodoEvent(graph, creditEvent(), 'm1', NOW, ENV);
+    expect(await graph.listSourcesByStatus('u1', 'pending')).toHaveLength(3);
+    expect((await graph.getUser('u1'))!.credits).toBe(197);
+  });
+
   it('applies the dev checkout events the stand-in sends', async () => {
     const graph = await setup();
     const env = { DODO_PRO_PRODUCT_ID: '', DODO_CREDITS_PRODUCT_ID: '' };

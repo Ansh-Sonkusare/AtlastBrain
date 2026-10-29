@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { GraphPort } from '../graph/port';
 import type { Plan, User } from '../types';
 import { CREDITS_PER_PACK, productIds, type Env } from './products';
+import { decideSave } from './quota';
 
 const eventSchema = z.object({
   type: z.string(),
@@ -59,7 +60,10 @@ export async function handleDodoEvent(
   else await graph.updateUser(user.id, { credits: user.credits + CREDITS_PER_PACK });
 
   if (plan !== 'free') {
-    for (const source of await graph.listSourcesByStatus(user.id, 'blocked')) {
+    const blocked = await graph.listSourcesByStatus(user.id, 'blocked');
+    blocked.sort((a, b) => a.savedAt.localeCompare(b.savedAt));
+    for (const source of blocked) {
+      if ((await decideSave(graph, user.id, now)) === 'blocked') break;
       await graph.updateSource(source.id, { status: 'pending' });
     }
   }
