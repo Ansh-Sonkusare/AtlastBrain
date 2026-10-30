@@ -6,7 +6,7 @@ import type { BrainAnswer } from '../../server/types';
 import { ask } from './client-api';
 import { buildAnswerView, sourceHref } from './view-model';
 
-export function AskForm({ user }: { user: string }) {
+export function AskForm() {
   const [question, setQuestion] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -18,7 +18,7 @@ export function AskForm({ user }: { user: string }) {
     setBusy(true);
     setError(null);
     try {
-      setRes(await ask(user, q));
+      setRes(await ask(q));
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -74,7 +74,7 @@ export function AskForm({ user }: { user: string }) {
                   <li key={c.claimId}>
                     <p>{c.text}</p>
                     <p className="muted">
-                      From <Link href={sourceHref(user, c.sourceId)}>{c.sourceTitle}</Link>
+                      From <Link href={sourceHref(c.sourceId)}>{c.sourceTitle}</Link>
                     </p>
                   </li>
                 ))}

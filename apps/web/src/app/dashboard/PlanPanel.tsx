@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { APP_NAME } from '../brand';
 import { checkout, exportVault } from './client-api';
 import type { Usage } from './view-model';
 
@@ -13,7 +14,7 @@ function download(blob: Blob, name: string) {
   URL.revokeObjectURL(url);
 }
 
-export function PlanPanel({ user, usage }: { user: string; usage: Usage }) {
+export function PlanPanel({ usage }: { usage: Usage }) {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -33,21 +34,21 @@ export function PlanPanel({ user, usage }: { user: string; usage: Usage }) {
 
   const buy = (product: 'pro' | 'credits') =>
     run(async () => {
-      const { checkoutUrl } = await checkout(user, product);
+      const { checkoutUrl } = await checkout(product);
       window.open(checkoutUrl, '_blank', 'noopener');
       setMessage('Checkout opened in a new tab. Reload this page when you are done.');
     });
 
   const exportToObsidian = () =>
     run(async () => {
-      const out = await exportVault(user);
+      const out = await exportVault();
       if (out.kind === 'upgrade') {
         window.open(out.checkoutUrl, '_blank', 'noopener');
         setMessage('Export to Obsidian is a Pro feature. Checkout opened in a new tab.');
         return;
       }
-      download(out.blob, 'second-brain.zip');
-      setMessage('Downloaded second-brain.zip. Open it as an Obsidian vault.');
+      download(out.blob, `${APP_NAME.toLowerCase()}.zip`);
+      setMessage('Downloaded the vault zip. Open it as an Obsidian vault.');
     });
 
   return (

@@ -1,12 +1,13 @@
 import { buildVault, zipVault } from '../../../server/brain/export';
 import { createCheckout } from '../../../server/billing/dodo';
 import { CORS_HEADERS } from '../../../server/billing/cors';
-import { json, OPTIONS, placeholderEmail, withUser } from '../_lib/http';
+import { ensureAccount } from '../../../server/auth/identity';
+import { json, OPTIONS, withUser } from '../_lib/http';
 
 export { OPTIONS };
 
 export const GET = withUser(async ({ userId, deps }) => {
-  const user = await deps.graph.ensureUser(userId, placeholderEmail(userId));
+  const user = await ensureAccount(deps.graph, userId);
   if (user.plan !== 'pro') {
     const checkoutUrl = await createCheckout(deps.graph, user, 'pro');
     return json({ error: 'Export to Obsidian is a Pro feature', checkoutUrl }, 402);

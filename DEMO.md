@@ -18,7 +18,7 @@ Do these steps only for real Dodo checkout. Use the Dodo dashboard in test mode 
 1. Create a subscription product "Pro" at $5 a month. Put its id in `DODO_PRO_PRODUCT_ID`. The webhook ignores a `subscription.active` event for any other product id.
 2. Create a one-time product "Credit pack" at $3. Put its id in `DODO_CREDITS_PRODUCT_ID`.
 3. Put the test API key in `DODO_PAYMENTS_API_KEY`. Keep `DODO_PAYMENTS_ENVIRONMENT=test_mode`. The app refuses any other value.
-4. Get a public HTTPS address for `http://localhost:3000`. Run `cloudflared tunnel --url http://localhost:3000` (installed in `~/.local/bin`). It prints a `https://….trycloudflare.com` address, which changes on every start. Stop the tunnel after the demo, because the API has no authentication.
+4. Get a public HTTPS address for `http://localhost:3000`. Run `cloudflared tunnel --url http://localhost:3000` (installed in `~/.local/bin`). It prints a `https://….trycloudflare.com` address, which changes on every start. Stop the tunnel after the demo.
 5. In the dashboard, add a webhook endpoint at `<tunnel address>/api/webhooks/dodo`, for the `subscription.*` and `payment.succeeded` events.
 6. Copy the endpoint's signing secret into `DODO_PAYMENTS_WEBHOOK_KEY`. The secret you generated during setup does not match Dodo's signatures, and the route rejects every event signed by Dodo until you replace it.
 7. Restart `next dev` so that it reads the new values.
@@ -28,15 +28,15 @@ Do these steps only for real Dodo checkout. Use the Dodo dashboard in test mode 
 
 These steps need a person. Do them in this order on the demo laptop.
 
-1. Start TigerGraph, `next dev` on port 3000, and the worker, as the README describes.
-2. Build the extension with `pnpm --filter extension build`. In `chrome://extensions`, turn on **Developer mode**, click **Load unpacked**, and select `apps/extension/.output/chrome-mv3`. Pin the extension to the toolbar.
+1. Start TigerGraph, `DEMO_MODE=1 next dev` on port 3000, and the worker, as the README describes. Open `http://localhost:3000/dashboard?user=demo` once, so that this browser acts as `demo`.
+2. Build the extension with `pnpm --filter extension build`. In `chrome://extensions`, turn on **Developer mode**, click **Load unpacked**, and select `apps/extension/.output/chrome-mv3`. Pin the extension to the toolbar, click **Connect your account** in the side panel, and approve it on the page that opens. The extension then saves as `demo`.
 3. Add the Wispr Flow dictionary words. Get the project and concept names for `demo`:
 
 	```bash
 	curl -H 'x-user-id: demo' http://localhost:3000/api/vocabulary
 	```
 
-	The route needs the `x-user-id` header. If you open the address in a browser tab, it returns 401. Add each line of the output to the Wispr Flow dictionary.
+	The route needs the `x-user-id` header, which only `DEMO_MODE=1` honours. If you open the address in a browser tab, it returns 401. Add each line of the output to the Wispr Flow dictionary.
 4. Rehearse the full script below at least one time. Every step changes the `demo` user.
 5. Record a backup video of a full rehearsal. Use it if the live demo fails.
 6. Reset the demo user:

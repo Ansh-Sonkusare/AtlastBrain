@@ -1,7 +1,7 @@
 import DodoPayments from 'dodopayments';
 import type { GraphPort } from '../graph/port';
 import type { User } from '../types';
-import { appUrl, productIds, type Product, type Env } from './products';
+import { appUrl, devCheckoutEnabled, productIds, type Product, type Env } from './products';
 
 function client(env: Env): DodoPayments {
   const environment = env.DODO_PAYMENTS_ENVIRONMENT ?? 'test_mode';
@@ -21,7 +21,8 @@ export async function createCheckout(
   product: Product,
   env: Env = process.env,
 ): Promise<string> {
-  if (!env.DODO_PAYMENTS_API_KEY) return devCheckoutUrl(user, product, env);
+  if (devCheckoutEnabled(env)) return devCheckoutUrl(user, product, env);
+  if (!env.DODO_PAYMENTS_API_KEY) throw new Error('Checkout is not configured');
   const dodo = client(env);
   let customerId = user.dodoCustomerId;
   if (!customerId) {

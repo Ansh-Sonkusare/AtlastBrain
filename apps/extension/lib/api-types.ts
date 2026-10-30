@@ -67,6 +67,7 @@ export interface MeResponse {
 
 export interface Settings {
   apiBase: string;
-  userId: string;
+  /** Signed by the app's /extension/connect page. Empty until connected. */
+  token: string;
 }
 

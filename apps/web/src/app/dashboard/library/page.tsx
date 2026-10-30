@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { connection } from 'next/server';
 import { Suspense } from 'react';
+import { dashboardUser, ensureAccount } from '../../../server/auth/identity';
 import { monthStart } from '../../../server/billing/quota';
 import { getDeps } from '../../../server/deps';
 import { PlanPanel } from '../PlanPanel';
@@ -11,7 +12,6 @@ import {
   formatDate,
   hostOf,
   mergeLibrary,
-  resolveUser,
   SOURCE_STATUSES,
   sourceHref,
   type LibraryItem,
@@ -29,9 +29,9 @@ export default function DashboardPage(props: PageProps<'/dashboard/library'>) {
 
 async function Library({ searchParams }: { searchParams: PageProps<'/dashboard/library'>['searchParams'] }) {
   await connection();
-  const user = resolveUser((await searchParams).user);
+  const user = await dashboardUser((await searchParams).user);
   const { graph, now } = await getDeps();
-  const account = await graph.ensureUser(user, `${user}@example.com`);
+  const account = await ensureAccount(graph, user);
   const [lists, concepts, used] = await Promise.all([
     Promise.all(SOURCE_STATUSES.map((s) => graph.listSourcesByStatus(user, s))),
     graph.listConcepts(user),
@@ -41,10 +41,19 @@ async function Library({ searchParams }: { searchParams: PageProps<'/dashboard/l
   const unread = items.filter((i) => !i.read && (i.status === 'done' || i.status === 'partial')).length;
 
   return (
-    <Shell user={user} current="library">
+    <Shell
+      user={user}
+      current="library"
+      crumbs={<span className="here">Library</span>}
+      actions={
+        <Link className="button" href="/paste">
+          Paste a page
+        </Link>
+      }
+    >
       <div className="columns">
         <section className="stack" aria-labelledby="library-title">
-          <div>
+          <div className="page-title rise">
             <h1 id="library-title">Library</h1>
             <p className="muted">
               {items.length === 0
@@ -54,19 +63,19 @@ async function Library({ searchParams }: { searchParams: PageProps<'/dashboard/l
           </div>
           {items.length === 0 ? (
             <p className="empty">
-              Save a page from the extension with Alt+S, or <Link href="/">paste one</Link>. What is new to you will show here.
+              Save a page from the extension with Alt+S, or <Link href="/paste">paste one</Link>. What is new to you will show here.
             </p>
           ) : (
             <ul className="library">
               {items.map((item) => (
-                <LibraryRow key={item.id} item={item} user={user} />
+                <LibraryRow key={item.id} item={item} />
               ))}
             </ul>
           )}
         </section>
 
         <aside className="stack" aria-label="Context">
-          <section className="panel" aria-labelledby="concepts-title">
+          <section className="panel rise d2" aria-labelledby="concepts-title">
             <h2 id="concepts-title">Concepts</h2>
             {concepts.length === 0 ? (
               <p className="muted">Concepts show up as your saves are checked.</p>
@@ -79,9 +88,9 @@ async function Library({ searchParams }: { searchParams: PageProps<'/dashboard/l
             )}
           </section>
 
-          <section className="panel" aria-labelledby="plan-title">
+          <section className="panel rise d3" aria-labelledby="plan-title">
             <h2 id="plan-title">Plan and usage</h2>
-            <PlanPanel user={user} usage={buildUsage(account, used)} />
+            <PlanPanel usage={buildUsage(account, used)} />
           </section>
         </aside>
       </div>
@@ -89,13 +98,13 @@ async function Library({ searchParams }: { searchParams: PageProps<'/dashboard/l
   );
 }
 
-function LibraryRow({ item, user }: { item: LibraryItem; user: string }) {
+function LibraryRow({ item }: { item: LibraryItem }) {
   const pending = statusLabel(item.status);
   const ratio = item.newRatio;
   return (
     <li className="row">
       <div className="row-main">
-        <Link className="row-title" href={sourceHref(user, item.id)}>
+        <Link className="row-title" href={sourceHref(item.id)}>
           {item.title}
         </Link>
         <p className="muted">

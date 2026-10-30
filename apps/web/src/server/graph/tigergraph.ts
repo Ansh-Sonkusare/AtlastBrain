@@ -20,6 +20,8 @@ export interface TigerGraphConfig {
   graph: string;
   user: string;
   password: string;
+  /** TigerGraph Cloud secret. Local Community Edition runs without auth and leaves this unset. */
+  secret?: string;
 }
 
 export function tigerGraphConfigFromEnv(env: NodeJS.ProcessEnv = process.env): TigerGraphConfig {
@@ -28,7 +30,28 @@ export function tigerGraphConfigFromEnv(env: NodeJS.ProcessEnv = process.env): T
     graph: env.TG_GRAPH ?? 'SecondBrain',
     user: env.TG_USER ?? 'tigergraph',
     password: env.TG_PASSWORD ?? 'tigergraph',
+    secret: env.TG_SECRET || undefined,
   };
+}
+
+const TOKEN_REFRESH_MARGIN_MS = 60 * 60_000;
+const tokens = new Map<string, { token: string; expiresAt: number }>();
+
+/** Bearer header for a cloud instance, from a cached token minted with the secret. Empty when local. */
+export async function authHeaders(config: TigerGraphConfig): Promise<Record<string, string>> {
+  if (!config.secret) return {};
+  const cached = tokens.get(config.url);
+  if (cached && cached.expiresAt - TOKEN_REFRESH_MARGIN_MS > Date.now()) return { Authorization: `Bearer ${cached.token}` };
+  const res = await fetch(`${config.url}/gsql/v1/tokens`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ secret: config.secret }),
+  });
+  const body = (await res.json()) as { token?: string; expiration?: string };
+  if (!res.ok || !body.token) throw new Error(`TigerGraph token request failed: HTTP ${res.status}`);
+  const expiresAt = body.expiration ? Date.parse(body.expiration) : Date.now() + 2 * TOKEN_REFRESH_MARGIN_MS;
+  tokens.set(config.url, { token: body.token, expiresAt });
+  return { Authorization: `Bearer ${body.token}` };
 }
 
 /** Top-k handed to vectorSearch before the distance cut; matches the memory graph. */
@@ -264,7 +287,7 @@ export function createTigerGraph(config: TigerGraphConfig = tigerGraphConfigFrom
   async function call<T>(path: string, init: RequestInit = {}): Promise<RestppResponse<T>> {
     const res = await fetch(`${restpp}${path}`, {
       ...init,
-      headers: { 'Content-Type': 'application/json', 'GSQL-TIMEOUT': String(QUERY_TIMEOUT_MS), ...init.headers },
+      headers: { 'Content-Type': 'application/json', 'GSQL-TIMEOUT': String(QUERY_TIMEOUT_MS), ...(await authHeaders(config)), ...init.headers },
     });
     const text = await res.text();
     try {
@@ -588,7 +611,7 @@ interface VectorStatus {
 export async function waitForVectorIndex(timeoutMs = 60_000, config: TigerGraphConfig = tigerGraphConfigFromEnv()) {
   const deadline = Date.now() + timeoutMs;
   const ready = async (type: string) => {
-    const res = await fetch(`${config.url}/restpp/vector/status/${config.graph}/${type}/embedding`);
+    const res = await fetch(`${config.url}/restpp/vector/status/${config.graph}/${type}/embedding`, { headers: await authHeaders(config) });
     const body = (await res.json()) as VectorStatus;
     return body.status === 'Ready_for_query' && (body.results?.NeedRebuildServers ?? []).length === 0;
   };

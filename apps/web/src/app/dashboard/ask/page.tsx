@@ -1,8 +1,10 @@
 import type { Metadata } from 'next';
+import { connection } from 'next/server';
 import { Suspense } from 'react';
+import { dashboardUser, ensureAccount } from '../../../server/auth/identity';
+import { getGraph } from '../../../server/deps';
 import { AskForm } from '../AskForm';
 import { PageLoading, Shell } from '../Parts';
-import { resolveUser } from '../view-model';
 
 export const metadata: Metadata = { title: 'Ask' };
 
@@ -15,16 +17,18 @@ export default function AskPage(props: PageProps<'/dashboard/ask'>) {
 }
 
 async function Ask({ searchParams }: { searchParams: PageProps<'/dashboard/ask'>['searchParams'] }) {
-  const user = resolveUser((await searchParams).user);
+  await connection();
+  const user = await dashboardUser((await searchParams).user);
+  await ensureAccount(await getGraph(), user);
   return (
-    <Shell user={user} current="ask">
-      <div className="stack wide ask-page">
+    <Shell user={user} current="ask" narrow crumbs={<span className="here">Ask</span>}>
+      <div className="stack ask-page rise">
         <div>
           <p className="eyebrow">Ask</p>
           <h1>Ask your brain</h1>
           <p className="muted">Answers use only claims from your own saves.</p>
         </div>
-        <AskForm user={user} />
+        <AskForm />
       </div>
     </Shell>
   );

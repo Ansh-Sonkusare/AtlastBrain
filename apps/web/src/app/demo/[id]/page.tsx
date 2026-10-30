@@ -1,3 +1,4 @@
+import { APP_NAME } from '../../brand';
 import { notFound } from 'next/navigation';
 import demo from '../../../../../../fixtures/seed/demo.json';
 import styles from './article.module.css';
@@ -46,7 +47,7 @@ export default async function DemoArticle({ params }: { params: Promise<{ id: st
           <p key={i}>{p}</p>
         ))}
       </article>
-      <footer className={styles.footer}>Field Notes is a demo publication for Second Brain.</footer>
+      <footer className={styles.footer}>Field Notes is a demo publication for {APP_NAME}.</footer>
     </div>
   );
 }

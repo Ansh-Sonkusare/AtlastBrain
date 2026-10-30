@@ -4,7 +4,7 @@ The contract between `apps/web` (server) and `apps/extension` (client). Types co
 
 Base URL: `http://localhost:3000` by default. The extension reads it from its options (`apiBase`).
 
-Every request carries `x-user-id`. The server rejects a request without it with `401 {"error":"missing user"}`. The demo user is `demo`. Every route answers CORS preflight (`OPTIONS`) and sends `Access-Control-Allow-Origin: *`, `Access-Control-Allow-Headers: content-type, x-user-id`, `Access-Control-Allow-Methods: GET, POST, DELETE, OPTIONS`. Errors are `{"error": string}` with a 4xx or 5xx status.
+Every request needs a verified identity: a Clerk session cookie (the web app), or `Authorization: Bearer <token>` (the extension, with a token from `/extension/connect`). The server rejects anything else with `401 {"error":"missing user"}`. `x-user-id` is honoured only when the server runs with `DEMO_MODE=1`, which production refuses; the demo user is `demo`. Every route answers CORS preflight (`OPTIONS`) and sends `Access-Control-Allow-Origin: *`, `Access-Control-Allow-Headers: content-type, authorization, x-user-id`, `Access-Control-Allow-Methods: GET, POST, DELETE, OPTIONS`. Errors are `{"error": string}` with a 4xx or 5xx status.
 
 | Method and path | Body | Response |
 | --- | --- | --- |
@@ -14,7 +14,7 @@ Every request carries `x-user-id`. The server rejects a request without it with 
 | `GET /api/graph/:sourceId` | | `200 Neighborhood`. |
 | `GET /api/me` | | `200 { user: User, usage: { used: number, limit: number, credits: number } }`. `used` counts saves since the first day of the current UTC month. |
 | `POST /api/billing/checkout` | `{ product: "pro" \| "credits" }` | `200 { checkoutUrl }`. |
-| `POST /api/webhooks/dodo` | Dodo webhook (Standard Webhooks signed) | `200 { outcome }` (`applied`, `duplicate`, `ignored`, `unknown_user`, or `invalid`), `400` on a bad signature. No `x-user-id`; the user comes from the event. |
+| `POST /api/webhooks/dodo` | Dodo webhook (Standard Webhooks signed) | `200 { outcome }` (`applied`, `duplicate`, `ignored`, `unknown_user`, or `invalid`), `400` on a bad signature. No user auth; the user comes from the signed event. |
 | `GET /api/vocabulary` | | `200 text/plain`, one project or concept name per line, for Wispr Flow's dictionary. |
 | `DELETE /api/me` | | `204`. Deletes the user and everything they own. |
 | `POST /api/ask` | `{ question }` | `200 BrainAnswer`. Answered from the user's own claims; not metered. |

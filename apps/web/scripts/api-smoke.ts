@@ -2,7 +2,7 @@
  * Drives every API route against a running stack, as a throwaway user.
  *
  * Start these first, each in its own shell, from the repo root:
- *   pnpm --filter web exec next dev -p 3100
+ *   DEMO_MODE=1 pnpm --filter web exec next dev -p 3100
  *   pnpm --filter web worker
  * TigerGraph must be up (container sb-tigergraph). Then run:
  *   pnpm --filter web exec tsx scripts/api-smoke.ts
@@ -61,6 +61,7 @@ async function main(): Promise<void> {
 
     const noUser = await call('GET', '/api/me', { headers: {} });
     assert.equal(noUser.status, 401);
+    assert.equal((await call('GET', '/api/me')).status, 200, 'x-user-id was refused: start next dev with DEMO_MODE=1');
     assert.deepEqual(noUser.body, { error: 'missing user' });
     assert.equal(noUser.headers.get('access-control-allow-origin'), '*');
     ok('401 without x-user-id');

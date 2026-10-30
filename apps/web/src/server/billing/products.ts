@@ -19,3 +19,6 @@ export function isProduct(value: unknown): value is Product {
 }
 
 export type Env = Record<string, string | undefined>;
+
+/** The local checkout stand-in upgrades whichever user it is told to, so it exists only outside production and without a Dodo key. */
+export const devCheckoutEnabled = (env: Env = process.env) => !env.DODO_PAYMENTS_API_KEY && env.NODE_ENV !== 'production';

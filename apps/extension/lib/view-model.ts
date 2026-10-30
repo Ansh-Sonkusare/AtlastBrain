@@ -12,6 +12,8 @@ export interface Receipt {
   percentNew: number;
   nothingNew: boolean;
   partial: boolean;
+  /** Text of the claims that were new to the user. */
+  newClaims: string[];
 }
 
 export function buildReceipt(result: SaveResult): Receipt {
@@ -24,12 +26,13 @@ export function buildReceipt(result: SaveResult): Receipt {
     percentNew: Math.round(result.newRatio * 100),
     nothingNew: result.newRatio < NOTHING_NEW_BELOW,
     partial: result.status === 'partial',
+    newClaims: result.verdicts.flatMap((v) => (v.kind === 'new' ? [v.text] : [])),
   };
 }
 
 /** Link into the web dashboard: the library, or one save when `sourceId` is given. */
-export function dashboardUrl(apiBase: string, userId: string, sourceId?: string): string {
+export function dashboardUrl(apiBase: string, sourceId?: string): string {
   const base = apiBase.replace(/\/+$/, '');
   const path = sourceId ? `/dashboard/source/${encodeURIComponent(sourceId)}` : '/dashboard';
-  return `${base}${path}?user=${encodeURIComponent(userId)}`;
+  return `${base}${path}`;
 }

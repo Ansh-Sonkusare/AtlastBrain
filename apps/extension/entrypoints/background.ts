@@ -1,4 +1,5 @@
 import { PENDING_CAPTURE_KEY, type ExtractMessage, type ExtractReply, type PagePayload } from '@/lib/extract';
+import { connectAccount } from '@/lib/settings';
 
 async function extractFromTab(tabId: number | undefined): Promise<ExtractReply> {
   if (tabId === undefined) return { ok: false, error: 'No active tab.' };
@@ -28,6 +29,18 @@ export default defineBackground(() => {
     if (target?.windowId !== undefined) browser.sidePanel.open({ windowId: target.windowId }).catch(() => {});
     const reply = await extractFromTab(target?.id);
     await browser.storage.session.set({ [PENDING_CAPTURE_KEY]: { ...reply, at: Date.now() } });
+  });
+
+  // Chrome delivers this only from origins in `externally_connectable`.
+  browser.runtime.onMessageExternal.addListener((message: { type?: unknown; token?: unknown } | undefined, sender, sendResponse) => {
+    if (message?.type !== 'atlas-connect' || typeof message.token !== 'string' || !message.token || !sender.origin) {
+      sendResponse({ ok: false });
+      return;
+    }
+    connectAccount(message.token, sender.origin)
+      .then(() => sendResponse({ ok: true }))
+      .catch(() => sendResponse({ ok: false }));
+    return true;
   });
 
   browser.runtime.onMessage.addListener((message: ExtractMessage, _sender, sendResponse) => {

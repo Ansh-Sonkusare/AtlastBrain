@@ -2,7 +2,7 @@
  * Runs the PRD's "Must work in the demo" list against the real stack, as a throwaway user.
  *
  * Needs, from the repo root: TigerGraph up and loaded (`pnpm --filter web graph:load`),
- *   pnpm --filter web exec next dev -p 3100      (with APP_URL=http://localhost:3100)
+ *   DEMO_MODE=1 pnpm --filter web exec next dev -p 3100      (with APP_URL=http://localhost:3100)
  *   pnpm --filter web worker
  * Then: pnpm --filter web e2e
  *

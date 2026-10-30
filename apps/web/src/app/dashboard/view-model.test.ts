@@ -9,8 +9,9 @@ import {
   dashboardHref,
   formatDate,
   mergeLibrary,
+  projectColor,
   projectCoverage,
-  resolveUser,
+  projectsOfSource,
   sourceHref,
   toLibraryItem,
   type SourceDetail,
@@ -32,16 +33,11 @@ const record = (over: Partial<SourceRecord> = {}): SourceRecord => ({
   ...over,
 });
 
-describe('resolveUser and links', () => {
-  it('defaults to demo and takes the first of a repeated param', () => {
-    expect(resolveUser(undefined)).toBe('demo');
-    expect(resolveUser('  ')).toBe('demo');
-    expect(resolveUser(['ann', 'bob'])).toBe('ann');
-  });
-
-  it('carries the user through every link, encoded', () => {
-    expect(dashboardHref('a b', '/ask')).toBe('/dashboard/ask?user=a%20b');
-    expect(sourceHref('u', 's/1')).toBe('/dashboard/source/s%2F1?user=u');
+describe('links', () => {
+  it('carry no user, and encode the source id', () => {
+    expect(dashboardHref()).toBe('/dashboard');
+    expect(dashboardHref('/ask')).toBe('/dashboard/ask');
+    expect(sourceHref('s/1')).toBe('/dashboard/source/s%2F1');
   });
 });
 
@@ -137,6 +133,9 @@ describe('projectCoverage', () => {
       ],
     };
     expect(projectCoverage(exp)).toEqual([{ name: 'Demo', read: 1, total: 2 }]);
+    // A save belongs to a project through the concepts its claims are about.
+    expect(projectsOfSource(exp, 's2')).toEqual([{ name: 'Demo', color: projectColor(0) }]);
+    expect(projectsOfSource(exp, 'nope')).toEqual([]);
   });
 });
 

@@ -11,6 +11,7 @@ describe('buildReceipt', () => {
       }),
     );
     expect(r).toMatchObject({ title: 'Article', newCount: 2, repeatCount: 1, percentNew: 67, nothingNew: false, partial: false });
+    expect(r.newClaims).toEqual([newClaim('A').text, newClaim('C').text]);
   });
 
   it('flags nothing new under 20%, but not at exactly 20%', () => {
@@ -26,8 +27,8 @@ describe('buildReceipt', () => {
 });
 
 describe('dashboardUrl', () => {
-  it('links the library and one source, carrying the user', () => {
-    expect(dashboardUrl('http://x/', 'u 1')).toBe('http://x/dashboard?user=u%201');
-    expect(dashboardUrl('http://x', 'u1', 's/1')).toBe('http://x/dashboard/source/s%2F1?user=u1');
+  it('links the library and one source, with no user in the URL', () => {
+    expect(dashboardUrl('http://x/')).toBe('http://x/dashboard');
+    expect(dashboardUrl('http://x', 's/1')).toBe('http://x/dashboard/source/s%2F1');
   });
 });

@@ -3,20 +3,11 @@ import type { SourceRecord } from '../../server/graph/port';
 import type { SourceResponse } from '../../server/pipeline/result';
 import type { BrainAnswer, GraphExport, Plan, SourceStatus, Tldr, User } from '../../server/types';
 
-export const DEFAULT_USER = 'demo';
 export const SOURCE_STATUSES: SourceStatus[] = ['pending', 'processing', 'done', 'partial', 'blocked'];
 
-/** `?user=` as Next hands it over: absent, empty, or repeated all fall back sensibly. */
-export function resolveUser(param: string | string[] | undefined): string {
-  const value = Array.isArray(param) ? param[0] : param;
-  return value?.trim() || DEFAULT_USER;
-}
+export const dashboardHref = (path = '') => `/dashboard${path}`;
 
-export function dashboardHref(user: string, path = ''): string {
-  return `/dashboard${path}?user=${encodeURIComponent(user)}`;
-}
-
-export const sourceHref = (user: string, sourceId: string) => dashboardHref(user, `/source/${encodeURIComponent(sourceId)}`);
+export const sourceHref = (sourceId: string) => dashboardHref(`/source/${encodeURIComponent(sourceId)}`);
 
 /** A source's ratio only means something once the pipeline has checked it. */
 export const isChecked = (status: SourceStatus) => status === 'done' || status === 'partial';
@@ -202,4 +193,18 @@ export function projectCoverage(exp: GraphExport): ProjectCoverage[] {
     const mine = exp.concepts.filter((c) => c.projects.includes(p.name));
     return { name: p.name, read: mine.filter((c) => readConcepts.has(c.name)).length, total: mine.length };
   });
+}
+
+/** Project label colors, cycled by position so a project keeps its color across pages. */
+const PROJECT_COLORS = ['#8B9CFF', '#E39AB4', '#7FC8D6', '#A3C28B', '#C98F7E'];
+export const projectColor = (index: number) => PROJECT_COLORS[((index % PROJECT_COLORS.length) + PROJECT_COLORS.length) % PROJECT_COLORS.length];
+
+/** Projects a save touches, through the concepts its claims are about. */
+export function projectsOfSource(exp: GraphExport, sourceId: string): { name: string; color: string }[] {
+  const src = exp.sources.find((s) => s.id === sourceId);
+  if (!src) return [];
+  const concepts = new Set(src.made.flatMap((c) => c.concepts));
+  return exp.projects.flatMap((p, i) =>
+    exp.concepts.some((c) => concepts.has(c.name) && c.projects.includes(p.name)) ? [{ name: p.name, color: projectColor(i) }] : [],
+  );
 }

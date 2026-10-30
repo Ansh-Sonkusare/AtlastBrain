@@ -15,7 +15,7 @@ function fakeFetch(statuses: SourceStatus[]) {
   return { fetchImpl, calls };
 }
 
-const settings = { apiBase: 'http://localhost:3000/', userId: 'demo' };
+const settings = { apiBase: 'http://localhost:3000/', token: 'tok' };
 
 describe('pollSource', () => {
   it('polls until done, sleeping between polls', async () => {
@@ -28,7 +28,8 @@ describe('pollSource', () => {
     expect(sleep).toHaveBeenCalledTimes(2);
     expect(sleep).toHaveBeenCalledWith(1000);
     expect(calls[0]!.url).toBe('http://localhost:3000/api/sources/s1');
-    expect(calls[0]!.headers['x-user-id']).toBe('demo');
+    expect(calls[0]!.headers['authorization']).toBe('Bearer tok');
+    expect(calls[0]!.headers['x-user-id']).toBeUndefined();
   });
 
   it('stops on partial', async () => {
@@ -62,7 +63,7 @@ describe('pollSource', () => {
 });
 
 describe('createApi.capture', () => {
-  it('posts the payload as JSON with the user header', async () => {
+  it('posts the payload as JSON with the bearer token', async () => {
     let captured: { url: string; init?: RequestInit } | undefined;
     const fetchImpl: FetchLike = async (url, init) => {
       captured = { url, init };

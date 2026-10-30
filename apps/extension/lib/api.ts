@@ -23,7 +23,7 @@ export function createApi(settings: Settings, fetchImpl: FetchLike = (i, init) =
   }
 
   async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-    const headers: Record<string, string> = { 'x-user-id': settings.userId };
+    const headers: Record<string, string> = { authorization: `Bearer ${settings.token}` };
     if (init.body !== undefined) headers['content-type'] = 'application/json';
     const res = await fetchImpl(`${base}${path}`, { ...init, headers });
     if (!res.ok) return fail(res);

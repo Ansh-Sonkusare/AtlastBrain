@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { isProduct } from '../../../server/billing/products';
+import { devCheckoutEnabled, isProduct } from '../../../server/billing/products';
 import { payTest } from './actions';
 
 const LABELS = { pro: 'Pro, $5 per month', credits: 'Credit pack, 200 saves for $3' };
@@ -9,7 +9,7 @@ export default async function DevCheckout({
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  if (process.env.DODO_PAYMENTS_API_KEY) notFound();
+  if (!devCheckoutEnabled()) notFound();
   const { product, user, webhook } = await searchParams;
   if (!isProduct(product) || typeof user !== 'string') notFound();
   return (

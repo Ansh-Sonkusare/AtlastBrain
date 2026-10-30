@@ -1,4 +1,5 @@
 import { CORS_HEADERS } from '../../../server/billing/cors';
+import { requestUser } from '../../../server/auth/identity';
 import { getDeps } from '../../../server/deps';
 import type { PipelineDeps } from '../../../server/pipeline/deps';
 
@@ -20,20 +21,16 @@ export interface Ctx {
   deps: PipelineDeps;
 }
 
-/** Rejects a request without `x-user-id` and turns a thrown error into a JSON 500. */
+/** Rejects a request with no verified user (see `requestUser`) and turns a thrown error into a JSON 500. */
 export function withUser(handler: (ctx: Ctx) => Promise<Response>): (request: Request) => Promise<Response> {
   return async (request) => {
-    const userId = request.headers.get('x-user-id');
-    if (!userId) return json({ error: 'missing user' }, 401);
     try {
+      const userId = await requestUser(request);
+      if (!userId) return json({ error: 'missing user' }, 401);
       return await handler({ request, userId, deps: await getDeps() });
     } catch (err) {
       console.error(err);
       return json({ error: err instanceof Error ? err.message : 'internal error' }, 500);
     }
   };
-}
-
-export function placeholderEmail(userId: string): string {
-  return `${userId}@example.com`;
 }

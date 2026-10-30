@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { createApi } from '@/lib/api';
+import { ApiError, createApi } from '@/lib/api';
 import type { CapturePayload, MeResponse, SaveResult } from '@/lib/api-types';
 import { PENDING_CAPTURE_KEY, type ExtractMessage, type ExtractReply } from '@/lib/extract';
 import { pollSource } from '@/lib/poll';
-import { loadSettings } from '@/lib/settings';
+import { disconnect, loadSettings } from '@/lib/settings';
 
 export type SaveState =
   | { phase: 'idle' }
@@ -11,6 +11,11 @@ export type SaveState =
   | { phase: 'blocked' }
   | { phase: 'done'; result: SaveResult }
   | { phase: 'error'; message: string };
+
+/** The server no longer accepts this token (expired, or the secret rotated), so go back to the connect state. */
+function disconnectIfRejected(e: unknown) {
+  if (e instanceof ApiError && e.status === 401) void disconnect();
+}
 
 export function useSave() {
   const [state, setState] = useState<SaveState>({ phase: 'idle' });
@@ -21,7 +26,8 @@ export function useSave() {
   const refreshMe = useCallback(async () => {
     try {
       setMe(await createApi(await loadSettings()).me());
-    } catch {
+    } catch (e) {
+      disconnectIfRejected(e);
       setMe(null);
     }
   }, []);
@@ -63,6 +69,7 @@ export function useSave() {
           void refreshMe();
         }
       } catch (e) {
+        disconnectIfRejected(e);
         if (!controller.signal.aborted) setState({ phase: 'error', message: e instanceof Error ? e.message : String(e) });
       }
     },

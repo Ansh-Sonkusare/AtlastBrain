@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom/client';
 import type { Settings } from '@/lib/api-types';
-import { DEFAULT_SETTINGS, loadSettings, saveSettings } from '@/lib/settings';
+import { DEFAULT_SETTINGS, disconnect, loadSettings, saveApiBase } from '@/lib/settings';
 import '../sidepanel/style.css';
 
 function Options() {
@@ -16,25 +16,34 @@ function Options() {
   };
   return (
     <main style={{ maxWidth: 480 }}>
-      <h1>Second Brain options</h1>
+      <h1>Atlas options</h1>
       <label>
         API base URL
         <input value={settings.apiBase} onChange={(e) => set({ apiBase: e.target.value })} />
       </label>
-      <label>
-        User id
-        <input value={settings.userId} onChange={(e) => set({ userId: e.target.value })} />
-      </label>
       <button
         className="primary"
         onClick={async () => {
-          await saveSettings(settings);
+          await saveApiBase(settings.apiBase);
           setSaved(true);
         }}
       >
         Save
       </button>
       {saved && <p className="status">Saved.</p>}
+      <h2>Account</h2>
+      {settings.token ? (
+        <button
+          onClick={async () => {
+            await disconnect();
+            setSettings({ ...settings, token: '' });
+          }}
+        >
+          Disconnect
+        </button>
+      ) : (
+        <p className="status">Not connected. Open the side panel to connect your account.</p>
+      )}
     </main>
   );
 }

@@ -235,9 +235,9 @@ When `DODO_PAYMENTS_API_KEY` is empty, `createCheckout` returns `/dev/checkout?p
 
 - The novelty threshold has a thin margin. In the 40 labelled pairs, the farthest "same" pair is at distance 0.347 and the nearest "different" pair is at 0.378. The whole gap is 0.031. The threshold 0.36 is 0.013 above the farthest "same" pair and 0.018 below the nearest "different" pair. See [`docs/threshold.md`](docs/threshold.md).
 - On the original stage article, the threshold got 11 of 12 sentences right. Sentence 7 (the `outputSchema` line) was a new fact that matched a seed claim, so the article had too few new claims for a TL;DR. The lead replaced that sentence in `fixtures/seed/demo.json` with a clearly new fact. The addendum in `docs/threshold.md` records this. The threshold, the seed, and the labelled pairs did not change.
-- There is no authentication. The server trusts the `x-user-id` header. Anyone who can reach the API can act as any user. With no Dodo key, anyone who can reach `/dev/checkout?product=pro&user=<id>` can upgrade any user to Pro.
+- Identity comes from a Clerk session or a signed extension token. `DEMO_MODE=1` (local only, refused in production) honours `x-user-id` and `?user=`. Extension tokens last 90 days and have no per-token revocation; rotating `EXTENSION_TOKEN_SECRET` revokes all of them. `/dev/checkout` is off in production.
 - Wispr Flow was not tested. The quick note box is a normal textarea.
-- `cloudflared` is installed (`~/.local/bin/cloudflared`), but no tunnel was started. A tunnel puts the API on the public internet, and the API has no authentication. Start one only for the Dodo test: `cloudflared tunnel --url http://localhost:3000`.
+- `cloudflared` is installed (`~/.local/bin/cloudflared`), but no tunnel was started. A tunnel puts the API on the public internet. Start one only for the Dodo test: `cloudflared tunnel --url http://localhost:3000`.
 - Real Claude ran once with the `demo` profile (see LLM profiles). The `cheap` profile was not run.
 - Ask the brain can miss a claim that was saved in the last few seconds, because TigerGraph's vector index takes a moment to include new vectors. With the `stub` profile the answer is the top 3 claims joined, not a written answer.
 - The Obsidian export is one-way. Concept notes have no summary, because nothing writes `Concept.summary` yet.

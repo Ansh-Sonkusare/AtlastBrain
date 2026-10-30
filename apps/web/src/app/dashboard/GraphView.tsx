@@ -5,7 +5,94 @@ import type { ForceGraphMethods } from 'react-force-graph-2d';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Neighborhood } from '../../server/types';
 import { neighborhood } from './client-api';
-import { buildForceData, LEGEND, type ForceData, type ForceNode } from './graph-model';
+import {
+  boxCollide,
+  buildForceData,
+  canvasLabel,
+  CONCEPT_FILL,
+  CONCEPT_LABEL,
+  fitView,
+  LABEL_COLOR,
+  LEGEND,
+  linkDistance,
+  NEW_RING_COLOR,
+  NODE_COLORS,
+  PROJECT_HALO_COLOR,
+  SELECTED_COLOR,
+  unitsPerPixel,
+  type ForceData,
+  type ForceLink,
+  type ForceNode,
+} from './graph-model';
+
+type Placed = ForceNode & { x: number; y: number };
+
+function roundSquare(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, radius: number) {
+  ctx.beginPath();
+  ctx.roundRect(x - r, y - r, r * 2, r * 2, radius);
+}
+
+/** `u` is graph units per design pixel, so shapes keep the design's proportions at every zoom. */
+function drawNode(node: Placed, ctx: CanvasRenderingContext2D, scale: number, u: number, selected: boolean) {
+  const { x, y } = node;
+  const r = node.radius * u;
+  const circle = (rad: number) => {
+    ctx.beginPath();
+    ctx.arc(x, y, rad, 0, 2 * Math.PI);
+  };
+  const ring = () => {
+    circle(r + 3 * u);
+    ctx.strokeStyle = SELECTED_COLOR;
+    ctx.lineWidth = 1 / scale;
+    ctx.stroke();
+  };
+  if (node.type === 'Source') {
+    roundSquare(ctx, x, y, r, 3 * u);
+    ctx.lineWidth = 1.5 / scale;
+    ctx.strokeStyle = selected ? SELECTED_COLOR : NODE_COLORS.Source;
+    ctx.stroke();
+  } else if (node.type === 'Concept') {
+    if (selected) {
+      roundSquare(ctx, x, y, r + 4 * u, 10 * u);
+      ctx.fillStyle = '#090807';
+      ctx.fill();
+      ctx.strokeStyle = SELECTED_COLOR;
+      ctx.lineWidth = 1 / scale;
+      ctx.stroke();
+    }
+    roundSquare(ctx, x, y, r, 7 * u);
+    ctx.fillStyle = selected ? SELECTED_COLOR : CONCEPT_FILL;
+    ctx.fill();
+  } else if (node.type === 'Project') {
+    circle(r + 10 * u);
+    ctx.fillStyle = PROJECT_HALO_COLOR;
+    ctx.fill();
+    circle(r);
+    ctx.fillStyle = NODE_COLORS.Project;
+    ctx.fill();
+    if (selected) ring();
+  } else {
+    if (!node.repeat) {
+      circle(r + 4 * u);
+      ctx.fillStyle = NEW_RING_COLOR;
+      ctx.fill();
+    }
+    circle(r);
+    ctx.fillStyle = node.color;
+    ctx.fill();
+    if (selected) ring();
+  }
+}
+
+const CONCEPT_LABEL_GAP = 10;
+
+let pageFont: string | undefined;
+
+const labelFont = (node: ForceNode, scale: number) => {
+  pageFont ??= getComputedStyle(document.body).fontFamily;
+  const [weight, size] = node.type === 'Project' ? [600, 14] : node.type === 'Concept' ? [400, 13] : [400, 12];
+  return `${weight} ${size / scale}px ${pageFont}`;
+};
 
 const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), {
   ssr: false,
@@ -51,7 +138,8 @@ export function GraphLegend() {
 
 /**
  * The force canvas, sized to its container: a fixed `height`, or `fill` to take the parent's height.
- * It zooms to fit once the layout settles. `preview` freezes pan, zoom and drag.
+ * It zooms to fit once the layout settles. Only `fill` zooms on wheel, so an embedded graph doesn't trap page scroll.
+ * `preview` freezes pan, zoom and drag.
  */
 export function GraphCanvas({
   data,
@@ -73,10 +161,20 @@ export function GraphCanvas({
   const h = fill ? size.height : (height ?? 420);
   const fg = useRef<ForceGraphMethods | undefined>(undefined);
   const fitted = useRef(false);
+  // The zoom the layout was last fitted at: that view draws nodes at the design's pixels.
+  const fitScale = useRef(1);
+  const forcesSet = useRef(false);
   useEffect(() => {
     fitted.current = false;
   }, [data]);
   const zoomBy = (k: number) => fg.current?.zoom(fg.current.zoom() * k, 250);
+  const fit = () => {
+    const view = fitView(data.nodes, size.width, h, Math.min(60, h / 6));
+    if (!view || !fg.current) return;
+    fitScale.current = view.k;
+    fg.current.centerAt(view.x, view.y, 400);
+    fg.current.zoom(view.k, 400);
+  };
   return (
     <div ref={size.ref} className={`graph-box${fill ? ' fill' : ''}`} style={fill ? undefined : { height: h }}>
       {size.width > 0 && h > 0 && (
@@ -84,44 +182,95 @@ export function GraphCanvas({
           ref={fg}
           width={size.width}
           height={h}
-          cooldownTicks={120}
+          cooldownTicks={200}
+          onEngineTick={() => {
+            // The graph loads lazily, so the first tick is the first moment its forces are sure to exist.
+            if (forcesSet.current || !fg.current) return;
+            forcesSet.current = true;
+            fg.current.d3Force('charge')?.strength(-200).distanceMax(700);
+            fg.current.d3Force('link')?.distance(linkDistance);
+            fg.current.d3Force('collide', boxCollide());
+          }}
           onEngineStop={() => {
-            if (fitted.current) return;
+            if (fitted.current || !fg.current) return;
             fitted.current = true;
-            fg.current?.zoomToFit(400, 40);
+            fit();
           }}
           graphData={data}
           backgroundColor="rgba(0,0,0,0)"
-          nodeColor={(n) => (n as ForceNode).color}
           nodeLabel=""
-          linkColor={(l) => (l as { color: string }).color}
-          enableZoomInteraction={!preview}
+          linkColor={(l) => (l as ForceLink).color}
+          linkWidth={(l) => (l as ForceLink).width}
+          linkLineDash={(l) => {
+            const k = fg.current?.zoom() || 1;
+            return (l as ForceLink).dash?.map((d) => d / k) ?? null;
+          }}
+          enableZoomInteraction={fill && !preview}
           enablePanInteraction={!preview}
           enableNodeDrag={!preview}
+          enablePointerInteraction={!preview}
           onNodeHover={(n) => setHover(n ? (n as ForceNode).id : null)}
-          onNodeClick={(n) => onSelect?.((n as ForceNode).id)}
-          nodeCanvasObjectMode={() => 'after'}
+          onNodeClick={onSelect ? (n) => onSelect((n as ForceNode).id) : undefined}
+          nodeCanvasObjectMode={() => 'replace'}
+          nodePointerAreaPaint={(n, color, ctx, scale) => {
+            const node = n as Placed;
+            const u = unitsPerPixel(scale, fitScale.current);
+            const r = (node.radius + 2) * u;
+            ctx.fillStyle = color;
+            if (node.type === 'Concept') {
+              ctx.font = labelFont(node, scale);
+              const width = r + (CONCEPT_LABEL_GAP / scale) + ctx.measureText(canvasLabel(node.label)).width;
+              const half = Math.max(r, 9 / scale);
+              ctx.fillRect(node.x - r, node.y - half, r + width, half * 2);
+            } else if (node.type === 'Source') {
+              ctx.fillRect(node.x - r, node.y - r, r * 2, r * 2);
+            } else {
+              ctx.beginPath();
+              ctx.arc(node.x, node.y, r, 0, 2 * Math.PI);
+              ctx.fill();
+            }
+          }}
           nodeCanvasObject={(n, ctx, scale) => {
-            const node = n as ForceNode & { x: number; y: number };
-            if (!node.alwaysLabel && node.id !== hover && node.id !== selected) return;
-            ctx.font = `${12 / scale}px system-ui, sans-serif`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'top';
-            ctx.fillStyle = getComputedStyle(ctx.canvas).color;
-            ctx.fillText(node.label, node.x, node.y + 6);
+            const node = n as Placed;
+            const on = node.id === selected;
+            const hovered = node.id === hover;
+            const u = unitsPerPixel(scale, fitScale.current);
+            drawNode(node, ctx, scale, u, on);
+            const concept = node.type === 'Concept';
+            const project = node.type === 'Project';
+            if (!concept && !project && !node.alwaysLabel && !hovered && !on) return;
+            const r = node.radius * u;
+            const label = canvasLabel(node.label);
+            ctx.font = labelFont(node, scale);
+            ctx.fillStyle = concept ? (on || hovered ? SELECTED_COLOR : CONCEPT_LABEL) : project ? SELECTED_COLOR : LABEL_COLOR;
+            if (concept) {
+              ctx.textAlign = 'left';
+              ctx.textBaseline = 'middle';
+              ctx.fillText(label, node.x + r + CONCEPT_LABEL_GAP / scale, node.y);
+            } else {
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'top';
+              ctx.fillText(label, node.x, node.y + r + (project ? 10 : 6) / scale);
+            }
           }}
         />
       )}
       {!preview && size.width > 0 && (
         <div className="zoom-controls">
           <button type="button" aria-label="Zoom in" onClick={() => zoomBy(1.5)}>
-            +
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
           </button>
           <button type="button" aria-label="Zoom out" onClick={() => zoomBy(1 / 1.5)}>
-            −
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+              <path d="M5 12h14" />
+            </svg>
           </button>
-          <button type="button" aria-label="Fit graph to screen" onClick={() => fg.current?.zoomToFit(400, 40)}>
-            Fit
+          <button type="button" aria-label="Fit graph to screen" onClick={fit}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+              <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
+            </svg>
           </button>
         </div>
       )}
@@ -129,19 +278,19 @@ export function GraphCanvas({
   );
 }
 
-export function GraphView({ user, sourceId, height = 420 }: { user: string; sourceId: string; height?: number }) {
+export function GraphView({ sourceId, height = 420 }: { sourceId: string; height?: number }) {
   const [hood, setHood] = useState<Neighborhood | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let live = true;
-    neighborhood(user, sourceId)
+    neighborhood(sourceId)
       .then((r) => live && setHood(r))
       .catch((e) => live && setError(e instanceof Error ? e.message : String(e)));
     return () => {
       live = false;
     };
-  }, [user, sourceId]);
+  }, [sourceId]);
 
   const data = useMemo(() => (hood ? buildForceData(hood, sourceId) : null), [hood, sourceId]);
 

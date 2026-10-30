@@ -5,22 +5,23 @@ import { useEffect, useMemo, useState } from 'react';
 import type { GraphNode } from '../../server/types';
 import { explain } from './client-api';
 import { GraphCanvas } from './GraphView';
-import { filterForceData, NODE_COLORS, neighborsOf, type ForceData } from './graph-model';
-import { sourceHref } from './view-model';
+import { filterForceData, neighborsOf, type ForceData, type NodeGroup } from './graph-model';
+import { dashboardHref, sourceHref } from './view-model';
 
-const TOGGLES: { type: GraphNode['type']; label: string }[] = [
-  { type: 'Project', label: 'Projects' },
-  { type: 'Concept', label: 'Concepts' },
-  { type: 'Claim', label: 'Claims' },
-  { type: 'Source', label: 'Sources' },
+const TOGGLES: { group: NodeGroup; label: string; style: React.CSSProperties }[] = [
+  { group: 'New', label: 'New claims', style: { background: '#C9974E' } },
+  { group: 'Known', label: 'Known', style: { background: '#5F5A52' } },
+  { group: 'Source', label: 'Sources', style: { borderRadius: 2, border: '1.5px solid #9E978B' } },
+  { group: 'Concept', label: 'Concepts', style: { borderRadius: 3, background: '#4F4A43' } },
+  { group: 'Project', label: 'Projects', style: { background: '#EDE8DF' } },
 ];
 
 const clip = (n: { type: GraphNode['type']; label: string }) => ({ type: n.type, label: n.label.slice(0, 300) });
 
 type Explained = { state: 'loading' } | { state: 'done'; text: string } | { state: 'error'; message: string };
 
-export function GraphExplorer({ user, data }: { user: string; data: ForceData }) {
-  const [hidden, setHidden] = useState<Set<GraphNode['type']>>(new Set());
+export function GraphExplorer({ data }: { data: ForceData }) {
+  const [hidden, setHidden] = useState<Set<NodeGroup>>(new Set(['Known']));
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<string | null>(null);
 
@@ -50,7 +51,7 @@ export function GraphExplorer({ user, data }: { user: string; data: ForceData })
     const id = node.id;
     let live = true;
     setExplained((e) => ({ ...e, [id]: { state: 'loading' } }));
-    explain(user, clip(node), around.slice(0, 30).map(clip))
+    explain(clip(node), around.slice(0, 30).map(clip))
       .then((r) => live && setExplained((e) => ({ ...e, [id]: { state: 'done', text: r.explanation } })))
       .catch((err: unknown) =>
         live && setExplained((e) => ({ ...e, [id]: { state: 'error', message: err instanceof Error ? err.message : 'Could not explain this node.' } })),
@@ -60,10 +61,10 @@ export function GraphExplorer({ user, data }: { user: string; data: ForceData })
     };
     // ponytail: refetches only on node, neighbor set, or Retry; `explained`/`around` objects are intentionally not deps.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [node?.id, aroundKey, retry, user]);
+  }, [node?.id, aroundKey, retry]);
   const exp = node ? explained[node.id] : undefined;
 
-  const toggle = (t: GraphNode['type']) =>
+  const toggle = (t: NodeGroup) =>
     setHidden((h) => {
       const next = new Set(h);
       if (!next.delete(t)) next.add(t);
@@ -72,47 +73,57 @@ export function GraphExplorer({ user, data }: { user: string; data: ForceData })
 
   return (
     <div className="explorer">
-      <aside className="rail" aria-label="Filters">
-        <div className="stack">
-          <label className="eyebrow" htmlFor="graph-q">
-            Focus
-          </label>
-          <input id="graph-q" type="search" value={query} placeholder="Search the graph" onChange={(e) => setQuery(e.target.value)} />
-        </div>
-        <fieldset className="stack">
-          <legend className="eyebrow">Show</legend>
-          {TOGGLES.map((t) => (
-            <label key={t.type} className="check">
-              <input type="checkbox" checked={!hidden.has(t.type)} onChange={() => toggle(t.type)} />
-              <span className="dot" style={{ background: NODE_COLORS[t.type] }} aria-hidden="true" />
-              {t.label}
-            </label>
-          ))}
-        </fieldset>
-        <p className="muted">Click a node to see what it connects to. Drag to pan, scroll or use the buttons to zoom.</p>
-        <p className="muted" role="status">
-          {visible.nodes.length} nodes, {visible.links.length} links
-        </p>
-      </aside>
-
       <section className="canvas" aria-label="Knowledge graph">
         {visible.nodes.length === 0 ? (
-          <p className="empty">Nothing to show with these filters.</p>
+          <p className="empty" style={{ margin: '96px 20px 0' }}>
+            {data.nodes.length === 0 ? (
+              <>
+                Your graph is empty. Save a page from the extension or <Link href="/paste">paste one</Link>, and its ideas will show here.
+              </>
+            ) : (
+              'Nothing to show with these filters.'
+            )}
+          </p>
         ) : (
           <GraphCanvas data={visible} fill selected={selected} onSelect={setSelected} />
         )}
+        <div className="toolbar fade">
+          <div className="glass" role="group" aria-label="Show">
+            {TOGGLES.map((t) => (
+              <button key={t.group} type="button" aria-pressed={!hidden.has(t.group)} onClick={() => toggle(t.group)}>
+                <span className="swatch" style={t.style} aria-hidden="true" />
+                {t.label}
+              </button>
+            ))}
+          </div>
+          <div className="glass">
+            <label className="visually-hidden" htmlFor="graph-q">
+              Search the graph
+            </label>
+            <input id="graph-q" type="search" value={query} placeholder="Search the graph" onChange={(e) => setQuery(e.target.value)} />
+          </div>
+        </div>
+        <p className="graph-stats fade" role="status">
+          {visible.nodes.length} nodes · {visible.links.length} links
+        </p>
       </section>
 
       <aside className="detail" aria-live="polite" aria-label="Selection">
         {node ? (
-          <div className="stack">
-            <p className="eyebrow">{node.type}</p>
+          <div className="stack stagger" style={{ gap: 18 }}>
+            <p className="kind">
+              <span className="swatch" style={{ background: node.color, borderRadius: node.type === 'Concept' ? 2 : undefined }} aria-hidden="true" />
+              {node.type}
+            </p>
             <h2>{node.label}</h2>
-            {node.type === 'Source' && <Link href={sourceHref(user, node.id)}>Open this save</Link>}
+            {node.type === 'Source' && (
+              <Link className="button" href={sourceHref(node.id)}>
+                Open this save
+              </Link>
+            )}
             <div className="stack" aria-label="Explanation" aria-busy={!exp || exp.state === 'loading'}>
-              <p className="eyebrow">Explanation</p>
               {exp?.state === 'done' ? (
-                <p>{exp.text}</p>
+                <p className="explain">{exp.text}</p>
               ) : exp?.state === 'error' ? (
                 <>
                   <p className="status error">{exp.message}</p>
@@ -141,9 +152,15 @@ export function GraphExplorer({ user, data }: { user: string; data: ForceData })
                 </li>
               ))}
             </ul>
+            <Link className="button" href={dashboardHref('/ask')}>
+              Ask about {node.label.length > 28 ? 'this' : node.label}
+            </Link>
           </div>
         ) : (
-          <p className="muted">Select a node to read it here.</p>
+          <div className="stack">
+            <p className="kind">Nothing selected</p>
+            <p className="muted">Click a node to see what it connects to. Drag to pan, scroll or use the buttons to zoom.</p>
+          </div>
         )}
       </aside>
     </div>

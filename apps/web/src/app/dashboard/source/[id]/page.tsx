@@ -1,13 +1,15 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { connection } from 'next/server';
 import { Suspense } from 'react';
+import { dashboardUser } from '../../../../server/auth/identity';
 import { getDeps } from '../../../../server/deps';
 import { getSourceResponse } from '../../../../server/pipeline/result';
 import { AutoRefresh } from '../../AutoRefresh';
 import { GraphView } from '../../GraphView';
-import { Ledger, PageLoading, Shell, statusLabel } from '../../Parts';
+import { Icon, Ledger, PageLoading, Shell, statusLabel } from '../../Parts';
 import { ShowQuery } from '../../ShowQuery';
-import { buildSourceDetail, dashboardHref, formatDate, hostOf, resolveUser, sourceHref, type SourceDetail } from '../../view-model';
+import { buildSourceDetail, dashboardHref, formatDate, hostOf, projectsOfSource, sourceHref, type SourceDetail } from '../../view-model';
 
 type Props = PageProps<'/dashboard/source/[id]'>;
 
@@ -20,97 +22,144 @@ export default function SourcePage(props: Props) {
 }
 
 async function Source({ params, searchParams }: Pick<Props, 'params' | 'searchParams'>) {
+  await connection();
   const [{ id }, sp] = await Promise.all([params, searchParams]);
-  const user = resolveUser(sp.user);
+  const user = await dashboardUser(sp.user);
   const deps = await getDeps();
-  const [res, record] = await Promise.all([
+  const [res, record, exp] = await Promise.all([
     getSourceResponse(deps, user, id).catch(() => null),
     deps.graph.getSource(user, id),
+    deps.graph.exportGraph(user).catch(() => null),
   ]);
   if (!res || !record) notFound();
   const d = buildSourceDetail(res);
   const waiting = statusLabel(d.status);
+  const projects = exp ? projectsOfSource(exp, id) : [];
+  const host = hostOf(d.url) || d.url;
 
   return (
-    <Shell user={user} current="library">
-      <div className="columns">
-        <article className="stack feed">
-          <div>
-            <Link href={dashboardHref(user)}>Back to what&apos;s new</Link>
-            <h1 className="headline source-title">{d.title}</h1>
-            <p className="muted">
-              <a href={d.url} target="_blank" rel="noreferrer">
-                {hostOf(d.url) || d.url}
-              </a>
-              <span>Saved {formatDate(record.savedAt)}</span>
-              <span>{record.readAt ? `Read ${formatDate(record.readAt)}` : 'Unread'}</span>
-            </p>
-          </div>
+    <Shell
+      user={user}
+      current="library"
+      narrow
+      crumbs={
+        <>
+          <Link href={dashboardHref('/library')}>Library</Link>
+          <span className="here">{d.title}</span>
+        </>
+      }
+      actions={
+        <Link className="button primary" href={dashboardHref('/ask')}>
+          <Icon name="ask" size={14} />
+          Ask about your saves
+        </Link>
+      }
+    >
+      <article className="stack" style={{ gap: 40 }}>
+        <header className="src-head">
+          <span className="src-glyph rise" aria-hidden="true">
+            {host.charAt(0) || 'a'}
+          </span>
+          <h1 className="source-title rise d1">{d.title}</h1>
+          <dl className="props rise d2">
+            <div className="prop">
+              <dt>Source</dt>
+              <dd>
+                <a href={d.url} target="_blank" rel="noreferrer">
+                  {host}
+                </a>
+              </dd>
+            </div>
+            <div className="prop">
+              <dt>Saved</dt>
+              <dd>
+                {formatDate(record.savedAt)} · {record.readAt ? `read ${formatDate(record.readAt)}` : 'unread'}
+              </dd>
+            </div>
+            {projects.length > 0 && (
+              <div className="prop">
+                <dt>Project</dt>
+                <dd>
+                  {projects.map((p) => (
+                    <span key={p.name} className="chip">
+                      <span className="sq" style={{ background: p.color }} />
+                      {p.name}
+                    </span>
+                  ))}
+                </dd>
+              </div>
+            )}
+            {waiting === null && d.percentNew !== null && (
+              <div className="prop">
+                <dt>Novelty</dt>
+                <dd className="novelty">
+                  <span className="mono-sm" style={{ color: 'var(--new)', fontSize: 14 }}>
+                    {d.percentNew}%
+                  </span>
+                  <Ledger newPart={d.newCount} repeatPart={d.repeatCount} label={`${d.newCount} new, ${d.repeatCount} already known`} />
+                  <span className="muted">
+                    {d.newCount} new · {d.repeatCount} known
+                  </span>
+                </dd>
+              </div>
+            )}
+          </dl>
+        </header>
+        <hr className="rule" />
 
-          {waiting !== null ? (
-            <Waiting status={d.status} user={user} />
-          ) : (
-            <>
-              <Verdict d={d} />
-              {d.status === 'partial' && <p className="status warn">Only part of this page could be checked.</p>}
-              {d.tldr && (
-                <section className="stack" aria-labelledby="tldr-title">
-                  <h2 id="tldr-title" className="eyebrow">
-                    TL;DR of what&apos;s new
-                  </h2>
-                  <ul className="tldr">
-                    {d.tldr.bullets.map((b) => (
-                      <li key={b}>{b}</li>
-                    ))}
-                  </ul>
-                  {d.tldr.whyItMatters && (
-                    <p className="muted">
-                      <strong>Why it matters.</strong> {d.tldr.whyItMatters}
-                    </p>
-                  )}
-                </section>
-              )}
-              <Claims d={d} user={user} />
-            </>
-          )}
-        </article>
-
-        {waiting === null && (
-          <aside className="stack" aria-label="Context">
-            <section className="panel" aria-labelledby="graph-title">
-              <h2 id="graph-title">Where it connects</h2>
-              <GraphView user={user} sourceId={d.id} height={260} />
-              <ShowQuery user={user} />
-            </section>
-            {d.highlights.length > 0 && (
-              <section className="panel" aria-labelledby="hl-title">
-                <h2 id="hl-title">Your highlights</h2>
-                {d.highlights.map((h) => (
-                  <blockquote key={h}>{h}</blockquote>
-                ))}
+        {waiting !== null ? (
+          <Waiting status={d.status} />
+        ) : (
+          <>
+            {d.status === 'partial' && <p className="status warn">Only part of this page could be checked.</p>}
+            {d.tldr && (
+              <section className="tldr-box rise d3" aria-labelledby="tldr-title">
+                <h2 id="tldr-title">What&apos;s new, in short</h2>
+                <ul>
+                  {d.tldr.bullets.map((b) => (
+                    <li key={b}>{b}</li>
+                  ))}
+                </ul>
+                {d.tldr.whyItMatters && (
+                  <p className="why">
+                    <b>Why it matters.</b> {d.tldr.whyItMatters}
+                  </p>
+                )}
               </section>
             )}
-            <div className="actions">
-              <Link className="button primary" href={dashboardHref(user, '/ask')}>
-                Ask about your saves
-              </Link>
-              <Link className="button" href={dashboardHref(user, '/graph')}>
-                Open full graph
-              </Link>
-            </div>
-          </aside>
+            <Claims d={d} />
+            <hr className="rule" />
+            <section className="connect">
+              <div>
+                <h2 className="label">Where it connects</h2>
+                <GraphView sourceId={d.id} height={180} />
+                <p className="muted">
+                  <Link href={dashboardHref('/graph')}>Open full graph</Link>
+                </p>
+                <ShowQuery />
+              </div>
+              {d.highlights.length > 0 && (
+                <div>
+                  <h2 className="label">Your highlights</h2>
+                  {d.highlights.map((h) => (
+                    <blockquote key={h}>{h}</blockquote>
+                  ))}
+                </div>
+              )}
+            </section>
+          </>
         )}
-      </div>
+      </article>
     </Shell>
   );
 }
 
-function Waiting({ status, user }: { status: SourceDetail["status"]; user: string }) {
+function Waiting({ status }: { status: SourceDetail['status'] }) {
   if (status === 'blocked')
     return (
       <p className="status warn">
         This save went over the free limit, so it has not been checked. Upgrade or add credits in the{' '}
-        <Link href={dashboardHref(user)}>dashboard</Link>, and it will be checked on its own.
+        <Link href={dashboardHref('/library')}>library</Link>, and it will be checked on its own.
       </p>
     );
   return (
@@ -123,62 +172,49 @@ function Waiting({ status, user }: { status: SourceDetail["status"]; user: strin
   );
 }
 
-function Verdict({ d }: { d: SourceDetail }) {
-  return (
-    <section className="panel verdict" aria-label="New versus repeated">
-      <dl className="tally">
-        <div className="new">
-          <dd>{d.newCount}</dd>
-          <dt>new to you</dt>
-        </div>
-        <div className="repeat">
-          <dd>{d.repeatCount}</dd>
-          <dt>already known</dt>
-        </div>
-        <div>
-          <dd>{d.percentNew}%</dd>
-          <dt>new ratio</dt>
-        </div>
-      </dl>
-      <Ledger newPart={d.newCount} repeatPart={d.repeatCount} size="lg" label={`${d.newCount} new claims, ${d.repeatCount} repeated`} />
-    </section>
-  );
-}
-
-function Claims({ d, user }: { d: SourceDetail; user: string }) {
+function Claims({ d }: { d: SourceDetail }) {
   if (d.newCount + d.repeatCount === 0) return <p className="empty">No claims were found on this page.</p>;
   return (
     <>
-      <section className="stack" aria-labelledby="new-title">
+      <section className="claim-sec rise d4" aria-labelledby="new-title">
         <h2 id="new-title">
           New to you <span className="count new">{d.newCount}</span>
         </h2>
         {d.newCount === 0 && <p className="muted">Nothing new here. You had all of it already.</p>}
-        <ul className="claims">
+        <ul className="claims stagger">
           {d.newClaims.map((c) => (
-            <li key={c.id} className="claim new">
-              <span className="pill">NEW</span>
+            <li key={c.id} className="new-line">
+              <span className="bullet" aria-hidden="true" />
               <span>{c.text}</span>
             </li>
           ))}
         </ul>
       </section>
       {d.repeatCount > 0 && (
-        <section className="stack" aria-labelledby="known-title">
-          <h2 id="known-title" className="dim">
-            Already known <span className="count">{d.repeatCount}</span>
-          </h2>
-          <ul className="claims">
-            {d.repeats.map((r) => (
-              <li key={`${r.sourceId}:${r.text}`} className="claim repeat">
-                <p>{r.text}</p>
-                <p className="claim-meta">
-                  You read this in <Link href={sourceHref(user, r.sourceId)}>{r.sourceTitle}</Link>
-                  {r.originalText !== r.text && <span className="original">Original: {r.originalText}</span>}
-                </p>
-              </li>
-            ))}
-          </ul>
+        <section className="claim-sec" aria-labelledby="known-title">
+          <details>
+            <summary className="known-sum">
+              <h2 id="known-title">Already known</h2>
+              <span className="count mono-sm" style={{ fontSize: 14 }}>
+                {d.repeatCount}
+              </span>
+              <span className="fold">
+                <span className="when-closed">Show</span>
+                <span className="when-open">Fold</span>
+              </span>
+            </summary>
+            <ul className="claims known-list stagger">
+              {d.repeats.map((r) => (
+                <li key={`${r.sourceId}:${r.text}`} className="claim repeat">
+                  <p>{r.text}</p>
+                  <p className="claim-meta">
+                    First read in <Link href={sourceHref(r.sourceId)}>{r.sourceTitle}</Link>
+                    {r.originalText !== r.text && <span className="original">Original: {r.originalText}</span>}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </details>
         </section>
       )}
     </>

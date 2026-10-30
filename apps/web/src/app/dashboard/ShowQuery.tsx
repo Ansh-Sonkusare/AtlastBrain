@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { gsql as fetchGsql } from './client-api';
 
 /** The GSQL behind the novelty check, shown on demand. */
-export function ShowQuery({ user }: { user: string }) {
+export function ShowQuery() {
   const [open, setOpen] = useState(false);
   const [gsql, setGsql] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -15,7 +15,7 @@ export function ShowQuery({ user }: { user: string }) {
     if (!next || gsql !== null) return;
     setError(null);
     try {
-      setGsql(await fetchGsql(user, 'known_claims'));
+      setGsql(await fetchGsql('known_claims'));
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }

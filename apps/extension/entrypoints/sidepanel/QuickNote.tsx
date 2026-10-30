@@ -4,31 +4,28 @@ export function QuickNote({ disabled, onSave }: { disabled: boolean; onSave: (te
   const [text, setText] = useState('');
   const submit = async () => {
     const value = text.trim();
-    if (!value) return;
+    if (!value || disabled) return;
     setText('');
     await onSave(value);
   };
   return (
-    <footer className="card note">
-      <label htmlFor="note" className="eyebrow">
-        Quick note
-      </label>
-      <textarea
+    <div className="field">
+      <label htmlFor="note" className="sr">Quick note</label>
+      <input
         id="note"
-        rows={2}
+        type="text"
         value={text}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) void submit();
+          if (e.key === 'Enter') void submit();
         }}
-        placeholder="Type or dictate a thought"
+        placeholder="Jot a thought…"
       />
-      <div className="note-bar">
-        <span className="muted">⌘ Enter to save</span>
-        <button disabled={disabled || !text.trim()} onClick={submit}>
-          Save note
-        </button>
-      </div>
-    </footer>
+      <button className="icon send" aria-label="Save note" disabled={disabled || !text.trim()} onClick={submit}>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+          <path d="M12 19V5M6 11l6-6 6 6" />
+        </svg>
+      </button>
+    </div>
   );
 }

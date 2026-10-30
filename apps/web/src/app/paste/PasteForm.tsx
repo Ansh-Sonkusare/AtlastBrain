@@ -2,8 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-
-const USER = 'demo';
+import { APP_NAME } from '../brand';
 
 export function PasteForm() {
   const [url, setUrl] = useState('');
@@ -16,7 +15,7 @@ export function PasteForm() {
     setBusy(true);
     setResult(null);
     try {
-      const headers = { 'content-type': 'application/json', 'x-user-id': USER };
+      const headers = { 'content-type': 'application/json' };
       const res = await fetch('/api/capture', {
         method: 'POST',
         headers,
@@ -40,7 +39,7 @@ export function PasteForm() {
   return (
     <main className="paste">
       <div>
-        <p className="eyebrow">Second Brain</p>
+        <p className="eyebrow"><Link href="/">{APP_NAME}</Link></p>
         <h1>Paste a page</h1>
         <p className="muted">See only what is new to you, checked against everything you have read.</p>
       </div>
@@ -71,7 +70,7 @@ export function PasteForm() {
         {result && !result.error && (
           <p className="status">
             {result.status === 'pending' || result.status === 'processing' ? 'Checking…' : `Status: ${result.status}.`}{' '}
-            {result.sourceId && <Link href={`/dashboard/source/${encodeURIComponent(result.sourceId)}?user=${USER}`}>Open this save</Link>}
+            {result.sourceId && <Link href={`/dashboard/source/${encodeURIComponent(result.sourceId)}`}>Open this save</Link>}
           </p>
         )}
       </div>

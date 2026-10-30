@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { tigerGraphConfigFromEnv } from '../src/server/graph/tigergraph';
+import { authHeaders, tigerGraphConfigFromEnv } from '../src/server/graph/tigergraph';
 
 const config = tigerGraphConfigFromEnv();
 const graphDir = resolve(__dirname, '../../../graph');
@@ -17,6 +17,7 @@ async function gsql(script: string): Promise<string> {
     headers: {
       'Content-Type': 'text/plain',
       Authorization: `Basic ${Buffer.from(`${config.user}:${config.password}`).toString('base64')}`,
+      ...(await authHeaders(config)),
       'GSQL-TIMEOUT': '1800000',
     },
     body: script,

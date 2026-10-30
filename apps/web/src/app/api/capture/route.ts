@@ -3,7 +3,8 @@ import { withBillingLock } from '../../../server/billing/lock';
 import { decideSave } from '../../../server/billing/quota';
 import { capture } from '../../../server/pipeline/capture';
 import { CapturePayload } from '../../../server/types';
-import { json, OPTIONS, placeholderEmail, withUser } from '../_lib/http';
+import { ensureAccount } from '../../../server/auth/identity';
+import { json, OPTIONS, withUser } from '../_lib/http';
 
 export { OPTIONS };
 
@@ -14,7 +15,7 @@ export const POST = withUser(async ({ request, userId, deps }) => {
   const parsed = Body.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return json({ error: parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ') }, 400);
 
-  const user = await deps.graph.ensureUser(userId, placeholderEmail(userId));
+  const user = await ensureAccount(deps.graph, userId);
   const { source } = await withBillingLock(() =>
     capture(deps, userId, parsed.data, {
       admit: async () => ((await decideSave(deps.graph, userId, deps.now())) === 'blocked' ? 'blocked' : 'pending'),
