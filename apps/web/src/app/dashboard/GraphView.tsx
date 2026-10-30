@@ -11,11 +11,14 @@ import {
   canvasLabel,
   CONCEPT_FILL,
   CONCEPT_LABEL,
+  endId,
   fitView,
   gravity,
   LABEL_COLOR,
   linkDistance,
+  NEW_LINK_COLOR,
   NEW_RING_COLOR,
+  neighborsOf,
   NODE_COLORS,
   PROJECT_HALO_COLOR,
   SELECTED_COLOR,
@@ -64,8 +67,11 @@ function drawNode(node: Placed, ctx: CanvasRenderingContext2D, scale: number, u:
     ctx.fillStyle = selected ? SELECTED_COLOR : CONCEPT_FILL;
     ctx.fill();
   } else if (node.type === 'Project') {
-    circle(r + 10 * u);
-    ctx.fillStyle = PROJECT_HALO_COLOR;
+    const halo = ctx.createRadialGradient(x, y, r, x, y, r + 22 * u);
+    halo.addColorStop(0, PROJECT_HALO_COLOR);
+    halo.addColorStop(1, 'rgba(237, 232, 223, 0)');
+    circle(r + 22 * u);
+    ctx.fillStyle = halo;
     ctx.fill();
     circle(r);
     ctx.fillStyle = NODE_COLORS.Project;
@@ -85,6 +91,18 @@ function drawNode(node: Placed, ctx: CanvasRenderingContext2D, scale: number, u:
 }
 
 const CONCEPT_LABEL_GAP = 10;
+const PAPER = '#090807';
+
+/** Links recede until a node is in focus: new-claim links are the loudest, so they are quietest at rest. */
+function linkPaint(l: ForceLink, focus: string | null) {
+  const touches = focus !== null && (endId(l.source) === focus || endId(l.target) === focus);
+  const fresh = l.color === NEW_LINK_COLOR;
+  if (touches) return { color: fresh ? NEW_LINK_COLOR : '#9E978B', width: fresh ? 1.6 : 1.2 };
+  if (focus) return { color: `${l.color}18`, width: 0.6 };
+  return { color: fresh ? `${l.color}40` : l.color, width: fresh ? 0.7 : l.width };
+}
+
+const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 let pageFont: string | undefined;
 
@@ -143,7 +161,7 @@ export function GraphCanvas({
   height?: number;
   fill?: boolean;
   selected?: string | null;
-  onSelect?: (id: string) => void;
+  onSelect?: (id: string | null) => void;
   preview?: boolean;
 }) {
   const [hover, setHover] = useState<string | null>(null);
@@ -157,13 +175,22 @@ export function GraphCanvas({
   useEffect(() => {
     fitted.current = false;
   }, [data]);
+  const focus = preview ? null : (hover ?? selected ?? null);
+  const inFocus = useMemo(
+    () => (focus ? new Set([focus, ...neighborsOf(data, focus).map((n) => n.id)]) : null),
+    [data, focus],
+  );
+  useEffect(() => {
+    const n = data.nodes.find((x) => x.id === selected) as Placed | undefined;
+    if (n?.x !== undefined) fg.current?.centerAt(n.x, n.y, 500);
+  }, [data, selected]);
   const zoomBy = (k: number) => fg.current?.zoom(fg.current.zoom() * k, 250);
-  const fit = () => {
+  const fit = (ms = 400) => {
     const view = fitView(data.nodes, size.width, h, Math.min(60, h / 6));
     if (!view || !fg.current) return;
     fitScale.current = view.k;
-    fg.current.centerAt(view.x, view.y, 400);
-    fg.current.zoom(view.k, 400);
+    fg.current.centerAt(view.x, view.y, ms);
+    fg.current.zoom(view.k, ms);
   };
   return (
     <div ref={size.ref} className={`graph-box${fill ? ' fill' : ''}`} style={fill ? undefined : { height: h }}>
@@ -175,6 +202,8 @@ export function GraphCanvas({
           cooldownTicks={200}
           onEngineTick={() => {
             // The graph loads lazily, so the first tick is the first moment its forces are sure to exist.
+            // Keep the settling layout framed, so it never flies off the canvas before the final fit.
+            if (!fitted.current) fit(0);
             if (forcesSet.current || !fg.current) return;
             forcesSet.current = true;
             fg.current.d3Force('charge')?.strength(-200).distanceMax(700);
@@ -190,8 +219,17 @@ export function GraphCanvas({
           graphData={data}
           backgroundColor="rgba(0,0,0,0)"
           nodeLabel=""
-          linkColor={(l) => (l as ForceLink).color}
-          linkWidth={(l) => (l as ForceLink).width}
+          linkColor={(l) => linkPaint(l as ForceLink, focus).color}
+          linkWidth={(l) => linkPaint(l as ForceLink, focus).width}
+          linkCurvature={preview ? 0 : 0.12}
+          linkDirectionalParticles={preview || reducedMotion() ? 0 : 2}
+          linkDirectionalParticleWidth={(l) => {
+            const link = l as ForceLink;
+            return focus && (endId(link.source) === focus || endId(link.target) === focus) ? 2.5 : 0;
+          }}
+          linkDirectionalParticleSpeed={0.006}
+          linkDirectionalParticleColor={() => NEW_LINK_COLOR}
+          autoPauseRedraw={preview}
           linkLineDash={(l) => {
             const k = fg.current?.zoom() || 1;
             return (l as ForceLink).dash?.map((d) => d / k) ?? null;
@@ -202,6 +240,7 @@ export function GraphCanvas({
           enablePointerInteraction={!preview}
           onNodeHover={(n) => setHover(n ? (n as ForceNode).id : null)}
           onNodeClick={onSelect ? (n) => onSelect((n as ForceNode).id) : undefined}
+          onBackgroundClick={onSelect ? () => onSelect(null) : undefined}
           nodeCanvasObjectMode={() => 'replace'}
           nodePointerAreaPaint={(n, color, ctx, scale) => {
             const node = n as Placed;
@@ -223,27 +262,41 @@ export function GraphCanvas({
           }}
           nodeCanvasObject={(n, ctx, scale) => {
             const node = n as Placed;
+            // The first frame paints before the layout places anything.
+            if (!Number.isFinite(node.x)) return;
             const on = node.id === selected;
-            const hovered = node.id === hover;
             const u = unitsPerPixel(scale, fitScale.current) * (preview ? PREVIEW_NODE_SCALE : 1);
+            ctx.globalAlpha = inFocus && !inFocus.has(node.id) ? 0.14 : 1;
             drawNode(node, ctx, scale, u, on);
+            ctx.globalAlpha = 1;
+          }}
+          onRenderFramePost={(ctx, scale) => {
             if (preview) return;
-            const concept = node.type === 'Concept';
-            const project = node.type === 'Project';
-            if (!concept && !project && !node.alwaysLabel && !hovered && !on) return;
-            const r = node.radius * u;
-            const label = canvasLabel(node.label);
-            ctx.font = labelFont(node, scale);
-            ctx.fillStyle = concept ? (on || hovered ? SELECTED_COLOR : CONCEPT_LABEL) : project ? SELECTED_COLOR : LABEL_COLOR;
-            if (concept) {
-              ctx.textAlign = 'left';
-              ctx.textBaseline = 'middle';
-              ctx.fillText(label, node.x + r + CONCEPT_LABEL_GAP / scale, node.y);
-            } else {
-              ctx.textAlign = 'center';
-              ctx.textBaseline = 'top';
-              ctx.fillText(label, node.x, node.y + r + (project ? 10 : 6) / scale);
+            // Drawn after every node and link, so nothing crosses a label.
+            ctx.lineJoin = 'round';
+            for (const n of data.nodes) {
+              const node = n as Placed;
+              if (node.x === undefined) continue;
+              const on = node.id === selected;
+              const hovered = node.id === hover;
+              const concept = node.type === 'Concept';
+              const project = node.type === 'Project';
+              if (!concept && !project && !node.alwaysLabel && !hovered && !on) continue;
+              const r = node.radius * unitsPerPixel(scale, fitScale.current);
+              const label = canvasLabel(node.label);
+              ctx.font = labelFont(node, scale);
+              ctx.globalAlpha = inFocus && !inFocus.has(node.id) ? 0.2 : 1;
+              ctx.textAlign = concept ? 'left' : 'center';
+              ctx.textBaseline = concept ? 'middle' : 'top';
+              const x = concept ? node.x + r + CONCEPT_LABEL_GAP / scale : node.x;
+              const y = concept ? node.y : node.y + r + (project ? 10 : 6) / scale;
+              ctx.strokeStyle = PAPER;
+              ctx.lineWidth = 4 / scale;
+              ctx.strokeText(label, x, y);
+              ctx.fillStyle = concept ? (on || hovered ? SELECTED_COLOR : CONCEPT_LABEL) : project ? SELECTED_COLOR : LABEL_COLOR;
+              ctx.fillText(label, x, y);
             }
+            ctx.globalAlpha = 1;
           }}
         />
       )}
@@ -259,7 +312,7 @@ export function GraphCanvas({
               <path d="M5 12h14" />
             </svg>
           </button>
-          <button type="button" aria-label="Fit graph to screen" onClick={fit}>
+          <button type="button" aria-label="Fit graph to screen" onClick={() => fit()}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
               <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
             </svg>

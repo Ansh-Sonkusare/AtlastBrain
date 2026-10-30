@@ -15,7 +15,7 @@ export const NEW_LINK_COLOR = '#C9974E';
 export const SOURCE_LINK_COLOR = '#22201D';
 export const LINK_COLOR = '#2F2C28';
 export const NEW_RING_COLOR = 'rgba(201, 151, 78, 0.12)';
-export const PROJECT_HALO_COLOR = 'rgba(237, 232, 223, 0.05)';
+export const PROJECT_HALO_COLOR = 'rgba(237, 232, 223, 0.14)';
 export const SELECTED_COLOR = '#EDE8DF';
 export const CONCEPT_LABEL = '#9E978B';
 export const LABEL_COLOR = '#B8B1A5';
@@ -26,14 +26,14 @@ export const LABEL_COLOR = '#B8B1A5';
  */
 export const nodeRadius = (n: { type: GraphNode['type']; repeat: boolean }, claims = 0): number =>
   n.type === 'Project'
-    ? 22
+    ? 16
     : n.type === 'Concept'
       ? Math.min(28, 18 + Math.max(0, claims - 4) * 2.5) / 2
       : n.type === 'Source'
         ? 6
         : n.repeat
-          ? 5
-          : 6;
+          ? 3.5
+          : 4;
 
 /** Graph units per design pixel: exact at the fitted view, then proportional to zoom within limits. */
 export const unitsPerPixel = (scale: number, fitScale: number): number =>
@@ -153,7 +153,7 @@ export function buildWholeGraph(exp: GraphExport): Neighborhood {
   return { nodes, links };
 }
 
-const endId = (end: string | { id: string }) => (typeof end === 'string' ? end : end.id);
+export const endId = (end: string | { id: string }) => (typeof end === 'string' ? end : end.id);
 
 /**
  * Drop the node groups a viewer switched off and every link that touched one.

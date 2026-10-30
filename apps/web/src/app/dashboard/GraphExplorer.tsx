@@ -39,6 +39,12 @@ export function GraphExplorer({ data }: { data: ForceData }) {
     return { nodes: base.nodes.filter((n) => keep.has(n.id)), links: base.links.filter((l) => keep.has(l.source) && keep.has(l.target)) };
   }, [data, hidden, query]);
 
+  useEffect(() => {
+    const clear = (e: KeyboardEvent) => e.key === 'Escape' && setSelected(null);
+    window.addEventListener('keydown', clear);
+    return () => window.removeEventListener('keydown', clear);
+  }, []);
+
   const node = visible.nodes.find((n) => n.id === selected) ?? null;
   const around = node ? neighborsOf(visible, node.id) : [];
 
@@ -159,7 +165,7 @@ export function GraphExplorer({ data }: { data: ForceData }) {
         ) : (
           <div className="stack">
             <p className="kind">Nothing selected</p>
-            <p className="muted">Click a node to see what it connects to. Drag to pan, scroll or use the buttons to zoom.</p>
+            <p className="muted">Hover a node to trace its connections, click to explain it. Drag to pan, scroll to zoom, Esc to clear.</p>
           </div>
         )}
       </aside>
