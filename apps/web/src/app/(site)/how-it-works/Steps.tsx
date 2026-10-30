@@ -4,10 +4,10 @@ import { useEffect, useState } from 'react';
 import { APP_NAME } from '../../brand';
 
 const STEPS = [
-  { title: 'Save while you scroll', body: `Press ⌥S, click save, or just bookmark on X. ${APP_NAME} queues it.` },
+  { title: 'Save while you scroll', body: `Press ⌥S or click save. ${APP_NAME} queues it.` },
   { title: 'Read for you', body: 'Each post, thread or article is broken into short, standalone points.' },
   { title: 'Skip what you know', body: 'Points are matched by meaning against your knowledge base. Repeats drop out.' },
-  { title: 'Get your brief', body: 'New ideas become a short newsletter with references, and join your knowledge base.' },
+  { title: 'Get your brief', body: 'New ideas become a short brief with references, and join your knowledge base.' },
 ];
 
 function Score({ pct, v, children }: { pct: number; v: string; children: React.ReactNode }) {
@@ -78,7 +78,7 @@ export function Steps() {
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z" /></svg>
               Save this page
             </span>
-            <span style={{ fontSize: 13, color: 'var(--dim)', textAlign: 'center' }}>X bookmarks sync on their own. Highlights and notes ride along.</span>
+            <span style={{ fontSize: 13, color: 'var(--dim)', textAlign: 'center' }}>You can also paste a page or type a quick note.</span>
           </div>
         )}
         {step === 1 && (
@@ -112,13 +112,13 @@ export function Steps() {
         )}
         {step === 3 && (
           <div key={3} className="scene mini stagger">
-            <p className="mono" style={{ fontSize: 11, color: 'var(--dim)' }}>YOUR BRIEF · FRIDAY 8:00 AM · 4 MIN</p>
+            <p className="mono" style={{ fontSize: 11, color: 'var(--dim)' }}>YOUR BRIEF · FRIDAY</p>
             <p style={{ fontSize: 20, fontWeight: 600, letterSpacing: '-.025em' }}>Agents can now pay on Solana</p>
             <p style={{ fontSize: 14, lineHeight: 1.7, color: 'var(--ink-2)' }}>
               Payments settle on Solana as well as EVM chains, and the reference code is now Apache 2.0. <span className="cite on">1</span> <span className="cite">2</span>
             </p>
             <div style={{ padding: '10px 14px', borderLeft: '1px solid #2F2C28', display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <span style={{ fontSize: 12, color: 'var(--dim)' }}>[1] 𝕏 @agentpay_dev · bookmarked Mon</span>
+              <span style={{ fontSize: 12, color: 'var(--dim)' }}>[1] 𝕏 @agentpay_dev · saved Mon</span>
               <span style={{ fontSize: 13, lineHeight: 1.5, color: 'var(--ink-3)' }}>&ldquo;Payments now settle on Solana, not just EVM.&rdquo;</span>
             </div>
             <span className="status"><span className="dot" />2 new ideas added to your knowledge base under Orbit</span>

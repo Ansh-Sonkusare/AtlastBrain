@@ -13,7 +13,7 @@ import type {
   Tldr,
   User,
 } from '../types';
-import type { ConceptRecord, GraphPort, ProjectRecord, RepeatedClaim, SourceRecord } from './port';
+import { isPlaceholder, type ConceptRecord, type GraphPort, type ProjectRecord, type RepeatedClaim, type SourceRecord } from './port';
 
 export interface TigerGraphConfig {
   url: string;
@@ -216,6 +216,7 @@ function toExport(r: ExportJson): GraphExport {
   const repeats = groupBy(r.repeats, (row) => row.source_id);
   const highlights = groupBy(r.highlights, (row) => row.source_id);
   const sources: ExportSource[] = r.sources
+    .filter((v) => !isPlaceholder(v.attributes))
     .map(({ v_id: id, attributes: a }) => ({
       id,
       title: a.title,

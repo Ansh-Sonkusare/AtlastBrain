@@ -9,6 +9,7 @@ import type {
   Neighborhood,
   User,
 } from '../types';
+import { isPlaceholder } from './port';
 import type {
   ConceptRecord,
   GraphPort,
@@ -289,7 +290,7 @@ export function createMemoryGraph(): GraphPort {
     },
 
     async exportGraph(userId): Promise<GraphExport> {
-      const mine = [...sources.values()].filter((s) => s.userId === userId && s.status !== 'blocked');
+      const mine = [...sources.values()].filter((s) => s.userId === userId && s.status !== 'blocked' && !isPlaceholder(s));
       return {
         projects: [...projects.values()]
           .filter((p) => p.userId === userId)

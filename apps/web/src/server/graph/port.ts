@@ -12,6 +12,9 @@ import type {
   User,
 } from '../types';
 
+/** `pnpm --filter web demo:fill` saves quota placeholders under this url scheme. They count toward the quota only. */
+export const isPlaceholder = (s: { url: string }) => s.url.startsWith('fill://');
+
 export interface SourceRecord {
   id: string;
   userId: string;

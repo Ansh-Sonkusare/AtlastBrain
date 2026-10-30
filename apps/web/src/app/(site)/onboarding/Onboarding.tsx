@@ -7,20 +7,14 @@ import { Arrow, Brand } from '../chrome';
 import { INSTALL_URL } from '../extension/connect/target';
 import { finishSetup, skipSetup } from './actions';
 
-const STEPS = 4;
+const STEPS = 3;
 const SUGGESTED = ['Thesis', 'Job hunt', 'Side project', 'Course notes', 'Startup research', 'Reading list'];
-const WHENS = [
-  { id: 'am', label: 'Every morning', note: '8:00 AM, with your coffee' },
-  { id: 'pm', label: 'Every evening', note: '7:00 PM, after work' },
-  { id: 'wk', label: 'Once a week', note: 'Sunday 9:00 AM, a longer read' },
-];
 
 export function Onboarding() {
   const [step, setStep] = useState(0);
   const [names, setNames] = useState(SUGGESTED);
   const [picked, setPicked] = useState<string[]>([]);
   const [custom, setCustom] = useState('');
-  const [when, setWhen] = useState('am');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,12 +28,14 @@ export function Onboarding() {
   };
 
   const finish = async () => {
+    const n = custom.trim();
+    const chosen = n && !picked.includes(n) ? [...picked, n] : picked;
     setBusy(true);
     setError(null);
-    const failed = await finishSetup(picked, when).catch(() => 'Could not save your setup. Check your connection and try again.');
+    const failed = await finishSetup(chosen).catch(() => 'Could not save your setup. Check your connection and try again.');
     setBusy(false);
     if (failed) setError(failed);
-    else setStep(3);
+    else setStep(2);
   };
 
   return (
@@ -49,10 +45,10 @@ export function Onboarding() {
         <div className="ob-prog">
           <span className="mono">{step + 1} of {STEPS}</span>
           <div role="progressbar" aria-label="Setup progress" aria-valuemin={1} aria-valuemax={STEPS} aria-valuenow={step + 1} className="segs">
-            {[0, 1, 2, 3].map((i) => <span key={i} className={i <= step ? 'on' : undefined} />)}
+            {[0, 1, 2].map((i) => <span key={i} className={i <= step ? 'on' : undefined} />)}
           </div>
         </div>
-        {step < 3 && (
+        {step < 2 && (
           <form action={skipSetup}>
             <button type="submit" className="skip" style={{ border: 0, background: 'transparent' }}>Skip setup</button>
           </form>
@@ -86,7 +82,7 @@ export function Onboarding() {
           <div key={1} className="ob-step stagger quick">
             <p className="eyebrow">STEP 2</p>
             <h1>What are you working on?</h1>
-            <p className="d">Your brief is grouped by these, and your knowledge base files ideas under them. Pick a few, you can change them later.</p>
+            <p className="d">Atlas shows why each new idea matters for these, and your knowledge base files ideas under them. Pick a few.</p>
             <div role="group" aria-label="Projects" className="chips">
               {names.map((n) => {
                 const on = picked.includes(n);
@@ -102,8 +98,9 @@ export function Onboarding() {
               <label htmlFor="newp" className="sr">Add a project</label>
               <input id="newp" type="text" value={custom} onChange={(e) => setCustom(e.target.value)} placeholder="Add your own, e.g. Thesis on graph databases" className="field" />
             </form>
+            <div aria-live="polite">{error && <p className="d" role="alert">{error}</p>}</div>
             <div className="row-btns">
-              <button type="button" className="cta" onClick={() => { addCustom(); setStep(2); }}>{picked.length === 0 && !custom.trim() ? 'Continue without projects' : 'Continue'}</button>
+              <button type="button" className="cta" disabled={busy} onClick={finish}>{busy ? 'Saving…' : picked.length === 0 && !custom.trim() ? 'Continue without projects' : 'Continue'}</button>
               <button type="button" className="ghost q" onClick={() => setStep(0)}>Back</button>
             </div>
           </div>
@@ -112,28 +109,6 @@ export function Onboarding() {
         {step === 2 && (
           <div key={2} className="ob-step stagger quick">
             <p className="eyebrow">STEP 3</p>
-            <h1>When do you want to read your brief?</h1>
-            <p className="d">Your brief is on your dashboard, and it updates as your saves are checked. We&apos;ll keep this time for scheduled delivery, which isn&apos;t built yet, so nothing gets sent for now.</p>
-            <div role="radiogroup" aria-label="Brief schedule" className="radios">
-              {WHENS.map((w) => (
-                <button key={w.id} type="button" role="radio" aria-checked={when === w.id} className="radio" onClick={() => setWhen(w.id)}>
-                  <span aria-hidden="true" className="ring">{when === w.id && <i className="pop" />}</span>
-                  <span className="t"><b>{w.label}</b><span>{w.note}</span></span>
-                </button>
-              ))}
-            </div>
-            <p className="check" style={{ color: 'var(--dim)' }}>Email delivery is coming later.</p>
-            <div aria-live="polite">{error && <p className="d" role="alert">{error}</p>}</div>
-            <div className="row-btns">
-              <button type="button" className="cta" disabled={busy} onClick={finish}>{busy ? 'Saving…' : 'Continue'}</button>
-              <button type="button" className="ghost q" disabled={busy} onClick={() => setStep(1)}>Back</button>
-            </div>
-          </div>
-        )}
-
-        {step === 3 && (
-          <div key={3} className="ob-step stagger quick">
-            <p className="eyebrow">LAST STEP</p>
             <h1>Connect the extension <span className="soft">to save from any page.</span></h1>
             <p className="d">Open the {APP_NAME} side panel and click Connect your account, then approve it on the page that opens. You can also do this later.</p>
             <div className="row-btns">

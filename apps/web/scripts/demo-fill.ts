@@ -1,7 +1,8 @@
 /**
  * Brings a user to the edge of the free allowance for the paywall step of the demo:
  * after this runs, the user's next save is blocked and opens checkout.
- * Adds placeholder saves (no claims, so no view shows them). `pnpm --filter web seed` removes them.
+ * Adds placeholder saves with a `fill://` url. They count toward the quota, and the dashboard and
+ * the graph export skip them (`isPlaceholder`). `pnpm --filter web seed` removes them.
  *
  *   pnpm --filter web demo:fill [--user demo]
  */

@@ -7,7 +7,7 @@ const config = tigerGraphConfigFromEnv();
 
 async function reachable(): Promise<boolean> {
   try {
-    const res = await fetch(`${config.url}/api/ping`, { signal: AbortSignal.timeout(3000) });
+    const res = await fetch(`${config.url}/api/ping`, { signal: AbortSignal.timeout(15000) });
     return res.ok;
   } catch {
     return false;
@@ -298,6 +298,7 @@ describe.skipIf(!online)(suite, () => {
       await g.linkAbout(id('d-one:0'), `${D}::alpha`);
       await g.linkAbout(id('d-one:0'), `${D}::beta`);
       await g.createSource(source(D, 'd-blocked', 4, { status: 'blocked' }));
+      await g.createSource(source(D, 'd-fill', 4, { url: 'fill://d-fill' }));
       await g.createSource(source(D, 'd-two', 5));
       await g.addClaim(id('d-two'), { id: id('d-two:0'), text: 'd third', embedding: vNew, firstSeen: day(5) });
       await g.addRepeat(id('d-two'), id('d-one:0'), 'd restated', 0.03);

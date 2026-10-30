@@ -48,3 +48,9 @@ export async function exportVault(): Promise<{ kind: 'zip'; blob: Blob } | { kin
   }
   return res.ok ? { kind: 'zip', blob: await res.blob() } : fail(res);
 }
+
+/** Removes the caller's saves, claims, projects and plan record from the graph. The sign-in account stays. */
+export async function deleteMyData(): Promise<void> {
+  const res = await call('/api/me', { method: 'DELETE' });
+  if (!res.ok) await fail(res);
+}

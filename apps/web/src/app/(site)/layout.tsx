@@ -5,7 +5,7 @@ import './marketing.css';
 
 export const metadata: Metadata = {
   title: { default: `${APP_NAME} · Read it at last`, template: `%s · ${APP_NAME}` },
-  description: 'Save posts, threads and articles while you scroll. Get a short daily brief with references, and skip what you already know.',
+  description: 'Save posts, threads and articles while you scroll. Get a short brief with references, and skip what you already know.',
 };
 
 export default function SiteLayout({ children }: { children: React.ReactNode }) {

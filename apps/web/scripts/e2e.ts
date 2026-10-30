@@ -8,6 +8,7 @@
  *
  * The user `e2e-<timestamp>` is seeded from fixtures/seed and deleted at the end.
  */
+import { MAX_CLAIMS } from '../src/server/llm/schemas';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
@@ -66,13 +67,14 @@ async function main(): Promise<void> {
 
     const repeats = result.verdicts.filter((v) => v.kind === 'repeat');
     const fresh = result.verdicts.filter((v) => v.kind === 'new');
-    const labelledKnown = overlap.labels.filter((l: { known: boolean }) => l.known).length;
+    // The split stops at MAX_CLAIMS (PRD: 5 to 15 claims), so only the labels of the first sentences can show up.
+    const labelledKnown = overlap.labels.slice(0, MAX_CLAIMS).filter((l: { known: boolean }) => l.known).length;
     assert.ok(repeats.length >= labelledKnown - 1, `${repeats.length} repeats, labels say ${labelledKnown}`);
     assert.ok(fresh.length >= 1, 'no new claims');
     for (const r of repeats) {
       assert.ok(r.kind === 'repeat' && r.match.sourceTitle && r.match.sourceUrl.startsWith('http'), 'repeat without a "you read this in" link');
     }
-    pass('2 new vs repeated with links', `${fresh.length} new, ${repeats.length} repeated of ${result.verdicts.length} (labels: ${overlap.labels.length - labelledKnown} new)`);
+    pass('2 new vs repeated with links', `${fresh.length} new, ${repeats.length} repeated of ${result.verdicts.length} (labels: ${MAX_CLAIMS - labelledKnown} new in the first ${MAX_CLAIMS})`);
 
     assert.ok(result.tldr, 'no TL;DR');
     const freshTexts = new Set(fresh.map((v) => v.text));

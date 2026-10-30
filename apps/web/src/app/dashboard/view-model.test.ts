@@ -52,6 +52,11 @@ describe('mergeLibrary', () => {
     expect(items.map((i) => i.read)).toEqual([false, true]);
   });
 
+  it('hides demo:fill placeholders', () => {
+    const items = mergeLibrary([[record({ id: 'real' }), record({ id: 'demo-fill-1', url: 'fill://demo-fill-1' })]]);
+    expect(items.map((i) => i.id)).toEqual(['real']);
+  });
+
   it('shows a ratio only for checked sources, and falls back to the url for a title', () => {
     expect(toLibraryItem(record()).percentNew).toBe(42);
     expect(toLibraryItem(record({ status: 'partial' })).percentNew).toBe(42);

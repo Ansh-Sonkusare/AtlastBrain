@@ -1,8 +1,9 @@
 'use client';
 
+import { useAuth, useClerk } from '@clerk/nextjs';
 import { useState } from 'react';
 import { APP_NAME } from '../brand';
-import { checkout, exportVault } from './client-api';
+import { checkout, deleteMyData, exportVault } from './client-api';
 import type { Usage } from './view-model';
 
 function download(blob: Blob, name: string) {
@@ -18,6 +19,9 @@ export function PlanPanel({ usage }: { usage: Usage }) {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const { isSignedIn } = useAuth();
+  const { signOut } = useClerk();
 
   const run = async (job: () => Promise<void>) => {
     setBusy(true);
@@ -51,6 +55,13 @@ export function PlanPanel({ usage }: { usage: Usage }) {
       setMessage('Downloaded the vault zip. Open it as an Obsidian vault.');
     });
 
+  const deleteAll = () =>
+    run(async () => {
+      await deleteMyData();
+      if (isSignedIn) await signOut({ redirectUrl: '/' });
+      else window.location.assign('/');
+    });
+
   return (
     <div className="stack">
       <p>
@@ -77,7 +88,28 @@ export function PlanPanel({ usage }: { usage: Usage }) {
         <button disabled={busy} onClick={exportToObsidian}>
           Export to Obsidian
         </button>
+        {!confirmingDelete && (
+          <button className="danger" disabled={busy} onClick={() => setConfirmingDelete(true)}>
+            Delete my data
+          </button>
+        )}
       </div>
+      {confirmingDelete && (
+        <div className="stack" role="alertdialog" aria-label="Confirm delete">
+          <p className="status error">
+            This permanently removes all your saves, claims and projects, and resets your plan and credits. It cannot be undone.
+            Your sign-in account is kept, and you will be signed out.
+          </p>
+          <div className="actions">
+            <button disabled={busy} onClick={() => setConfirmingDelete(false)}>
+              Cancel
+            </button>
+            <button className="danger" disabled={busy} onClick={deleteAll}>
+              {busy ? 'Deleting…' : 'Yes, delete everything'}
+            </button>
+          </div>
+        </div>
+      )}
       <div aria-live="polite">
         {message && <p className="status">{message}</p>}
         {error && <p className="status error">{error}</p>}

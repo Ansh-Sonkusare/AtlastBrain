@@ -1,5 +1,5 @@
 import { ALLOWANCE } from '../../server/billing/quota';
-import type { SourceRecord } from '../../server/graph/port';
+import { isPlaceholder, type SourceRecord } from '../../server/graph/port';
 import type { SourceResponse } from '../../server/pipeline/result';
 import type { BrainAnswer, GraphExport, Plan, SourceStatus, Tldr, User } from '../../server/types';
 
@@ -40,10 +40,11 @@ export function toLibraryItem(s: SourceRecord): LibraryItem {
   };
 }
 
-/** One list from the per-status lists the graph returns, newest save first. */
+/** One list from the per-status lists the graph returns, newest save first, without quota placeholders. */
 export function mergeLibrary(lists: SourceRecord[][]): LibraryItem[] {
   return lists
     .flat()
+    .filter((s) => !isPlaceholder(s))
     .map(toLibraryItem)
     .sort((a, b) => b.savedAt.localeCompare(a.savedAt));
 }
@@ -196,7 +197,7 @@ export function projectCoverage(exp: GraphExport): ProjectCoverage[] {
 }
 
 /** Project label colors, cycled by position so a project keeps its color across pages. */
-const PROJECT_COLORS = ['#8B9CFF', '#E39AB4', '#7FC8D6', '#A3C28B', '#C98F7E'];
+const PROJECT_COLORS = ['#8FA98C', '#C27C5E', '#7F9BB3', '#C9974E', '#D9AE6C'];
 export const projectColor = (index: number) => PROJECT_COLORS[((index % PROJECT_COLORS.length) + PROJECT_COLORS.length) % PROJECT_COLORS.length];
 
 /** Projects a save touches, through the concepts its claims are about. */

@@ -48,7 +48,6 @@ export function SiteHeader({ current }: { current?: Page }) {
         <nav aria-label="Main" className="nav">
           <Link href="/how-it-works" {...cur('how')}>How it works</Link>
           <Link href="/pricing" {...cur('pricing')}>Pricing</Link>
-          <a href="#">Changelog</a>
         </nav>
         <div className="acts">
           <AuthLinks />
@@ -85,11 +84,9 @@ export function SiteFooter({ full }: { full?: boolean }) {
             <span>Product</span>
             <Link href="/how-it-works">How it works</Link>
             <Link href="/pricing">Pricing</Link>
-            <a href="#">Changelog</a>
           </div>
           <div className="foot-col">
             <span>Company</span>
-            <a href="#">About</a>
             <a href="#">Contact</a>
           </div>
           <div className="foot-col">

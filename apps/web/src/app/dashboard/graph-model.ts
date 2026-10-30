@@ -76,16 +76,6 @@ export interface ForceData {
   links: ForceLink[];
 }
 
-export interface LegendEntry {
-  label: string;
-  color: string;
-}
-
-export const LEGEND: LegendEntry[] = [
-  ...(Object.keys(NODE_COLORS) as GraphNode['type'][]).map((t) => ({ label: t, color: NODE_COLORS[t] })),
-  { label: 'Known', color: REPEAT_COLOR },
-];
-
 function styleLink(type: string, ends: (GraphNode | undefined)[]): Pick<ForceLink, 'color' | 'width' | 'dash'> {
   const claim = ends.find((n) => n?.type === 'Claim');
   if (type === 'REPEATS' || claim?.repeat) return { color: REPEAT_LINK_COLOR, width: 1, dash: [3, 4] };
@@ -256,6 +246,21 @@ export function boxCollide(margin = 8) {
         b.vx = (b.vx ?? 0) + px;
         b.vy = (b.vy ?? 0) + py;
       }
+    }
+  };
+  force.initialize = (n: object[]) => {
+    nodes = n as Placed[];
+  };
+  return force;
+}
+
+/** A d3 force that pulls every node toward the middle, so unlinked nodes and separate clusters stay close. */
+export function gravity(strength = 0.1) {
+  let nodes: Placed[] = [];
+  const force = (alpha: number) => {
+    for (const n of nodes) {
+      n.vx = (n.vx ?? 0) - (n.x ?? 0) * strength * alpha;
+      n.vy = (n.vy ?? 0) - (n.y ?? 0) * strength * alpha;
     }
   };
   force.initialize = (n: object[]) => {

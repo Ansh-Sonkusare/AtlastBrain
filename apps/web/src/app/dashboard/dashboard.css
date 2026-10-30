@@ -54,7 +54,7 @@
 .dash h2 { font: 600 var(--t-lg) / 1.3 var(--display); letter-spacing: -0.015em; }
 .dash h3 { font: 600 var(--t-sm) / 1.3 var(--sans); color: var(--ink-2); }
 .dash ul { padding-left: var(--s-4); }
-.dash ul.library, .dash ul.claims, .dash ul.plain, .dash ul.chips, .dash ul.legend, .dash .learn, .dash ul.nav-list, .dash ul.refs, .dash ul.short { list-style: none; padding: 0; }
+.dash ul.library, .dash ul.claims, .dash ul.plain, .dash ul.chips, .dash .learn, .dash ul.nav-list, .dash ul.refs, .dash ul.short { list-style: none; padding: 0; }
 .dash .muted { color: var(--ink-3); font-size: var(--t-sm); }
 .dash .muted > * + * { margin-left: var(--s-2); }
 .dash .stack { display: flex; flex-direction: column; gap: var(--s-3); min-width: 0; }
@@ -75,6 +75,8 @@
 .dash button:disabled { opacity: 0.5; cursor: default; }
 .dash button.primary, .dash .button.primary { background: var(--new); border-color: var(--new); color: #1A140A; font-weight: 500; }
 .dash button.primary:hover:not(:disabled) { color: #1A140A; border-color: #D6A862; background: #D6A862; }
+.dash button.danger { border-color: var(--danger); color: var(--danger); }
+.dash button.danger:hover:not(:disabled) { background: var(--danger); border-color: var(--danger); color: #1A140A; }
 .dash textarea { font: inherit; padding: var(--s-2); border: 1px solid var(--line-2); background: var(--surface); color: var(--ink); border-radius: var(--radius); resize: vertical; width: 100%; }
 .dash label { font-weight: 600; }
 .dash .actions { display: flex; flex-wrap: wrap; gap: var(--s-2); }
@@ -264,8 +266,6 @@
 .dash .connect > div { flex: 1 1 280px; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
 .dash blockquote { margin: 0; padding: 2px 0 2px 16px; border-left: 2px solid #3F3B35; font-size: 15px; line-height: 1.65; color: #D9D3C8; }
 .dash .answer { font: var(--t-lg) / 1.55 var(--display); }
-.dash .legend { display: flex; flex-wrap: wrap; gap: var(--s-1) var(--s-4); font-size: var(--t-xs); color: var(--ink-3); margin-bottom: var(--s-2); }
-.dash .legend .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: var(--s-1); }
 .dash .graph-box { width: 100%; border: 1px solid #191714; border-radius: 14px; overflow: hidden; background-color: var(--side); background-image: radial-gradient(#1A1815 1px, transparent 1px); background-size: 16px 16px; position: relative; }
 .dash .graph-box.fill { height: 100%; }
 .dash .gsql { font: var(--t-xs) / 1.5 var(--mono); background: var(--repeat-bg); border-radius: var(--radius); padding: var(--s-3); overflow: auto; max-height: 420px; white-space: pre-wrap; overflow-wrap: anywhere; }

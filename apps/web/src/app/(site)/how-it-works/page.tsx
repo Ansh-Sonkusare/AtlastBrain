@@ -37,8 +37,8 @@ export default function HowItWorks() {
           <h2 id="h-priv" className="sec reveal" style={{ fontSize: 'clamp(28px,5vw,40px)' }}>Your reading stays yours.</h2>
           <div className="cols">
             <div className="reveal"><h3>Saves only on your click</h3><p>The extension never reads a page you didn&apos;t save. No browsing history is collected.</p></div>
-            <div className="reveal"><h3>Export anytime</h3><p>Take your claims, sources and graph out as Markdown, ready for Obsidian or Notion.</p></div>
-            <div className="reveal"><h3>Delete means delete</h3><p>Remove a save and its claims leave the graph with it.</p></div>
+            <div className="reveal"><h3>Export anytime</h3><p>Take your claims, sources and graph out as Markdown notes in an Obsidian vault (Pro).</p></div>
+            <div className="reveal"><h3>Delete means delete</h3><p>Delete your account and your whole graph is removed with it.</p></div>
           </div>
         </section>
 

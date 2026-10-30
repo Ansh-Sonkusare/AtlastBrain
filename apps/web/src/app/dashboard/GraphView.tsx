@@ -12,8 +12,8 @@ import {
   CONCEPT_FILL,
   CONCEPT_LABEL,
   fitView,
+  gravity,
   LABEL_COLOR,
-  LEGEND,
   linkDistance,
   NEW_RING_COLOR,
   NODE_COLORS,
@@ -123,18 +123,8 @@ function useSize() {
   return { ref, ...size };
 }
 
-export function GraphLegend() {
-  return (
-    <ul className="legend">
-      {LEGEND.map((e) => (
-        <li key={e.label}>
-          <span className="dot" style={{ background: e.color }} />
-          {e.label}
-        </li>
-      ))}
-    </ul>
-  );
-}
+// The preview is a thumbnail: small unlabeled nodes, about 16px for a project as in the design.
+const PREVIEW_NODE_SCALE = 0.36;
 
 /**
  * The force canvas, sized to its container: a fixed `height`, or `fill` to take the parent's height.
@@ -190,6 +180,7 @@ export function GraphCanvas({
             fg.current.d3Force('charge')?.strength(-200).distanceMax(700);
             fg.current.d3Force('link')?.distance(linkDistance);
             fg.current.d3Force('collide', boxCollide());
+            fg.current.d3Force('gravity', gravity());
           }}
           onEngineStop={() => {
             if (fitted.current || !fg.current) return;
@@ -234,8 +225,9 @@ export function GraphCanvas({
             const node = n as Placed;
             const on = node.id === selected;
             const hovered = node.id === hover;
-            const u = unitsPerPixel(scale, fitScale.current);
+            const u = unitsPerPixel(scale, fitScale.current) * (preview ? PREVIEW_NODE_SCALE : 1);
             drawNode(node, ctx, scale, u, on);
+            if (preview) return;
             const concept = node.type === 'Concept';
             const project = node.type === 'Project';
             if (!concept && !project && !node.alwaysLabel && !hovered && !on) return;
@@ -299,8 +291,7 @@ export function GraphView({ sourceId, height = 420 }: { sourceId: string; height
 
   return (
     <div>
-      <GraphLegend />
-      <GraphCanvas data={data} height={height} />
+      <GraphCanvas data={data} height={height} preview />
     </div>
   );
 }

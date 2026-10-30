@@ -7,6 +7,7 @@ import {
   CONCEPT_FILL,
   filterForceData,
   fitView,
+  gravity,
   layoutBox,
   LINK_COLOR,
   neighborsOf,
@@ -208,6 +209,15 @@ describe('canvas sizing', () => {
     force.initialize(far);
     force();
     expect(far[0]!.vx).toBe(0);
+  });
+
+  it('pulls nodes toward the middle', () => {
+    const body = { ...buildForceData({ nodes: [{ id: 'a', type: 'Source', label: 'a' }], links: [] }, '').nodes[0]!, x: 100, y: -100, vx: 0, vy: 0 };
+    const force = gravity(0.1);
+    force.initialize([body]);
+    force(1);
+    expect(body.vx).toBe(-10);
+    expect(body.vy).toBe(10);
   });
 
   it('fits labels in view and caps the zoom on small graphs', () => {
