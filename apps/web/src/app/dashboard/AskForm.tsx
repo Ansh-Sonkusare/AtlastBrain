@@ -28,18 +28,20 @@ export function AskForm({ user }: { user: string }) {
 
   const view = res ? buildAnswerView(res) : null;
   return (
-    <div className="stack">
+    <div className="stack ask">
       <form
-        className="stack"
+        className="composer"
         onSubmit={(e) => {
           e.preventDefault();
           void submit();
         }}
       >
-        <label htmlFor="question">Your question</label>
+        <label htmlFor="question" className="visually-hidden">
+          Your question
+        </label>
         <textarea
           id="question"
-          rows={3}
+          rows={2}
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           placeholder="What do I already know about…"
@@ -50,29 +52,33 @@ export function AskForm({ user }: { user: string }) {
             }
           }}
         />
-        <div>
+        <div className="composer-bar">
+          <span className="muted">Enter to ask · Shift+Enter for a new line</span>
           <button className="primary" type="submit" disabled={busy || !question.trim()}>
-            {busy ? 'Searching your brain…' : 'Ask'}
+            {busy ? 'Searching…' : 'Ask'}
           </button>
         </div>
       </form>
       <div aria-live="polite">{error && <p className="status error">{error}</p>}</div>
       {view && (
         <section className="stack" aria-label="Answer">
-          <p className="answer">{view.answer}</p>
+          <div className="panel answer-card">
+            <p className="eyebrow">Answer</p>
+            <p className="answer">{view.answer}</p>
+          </div>
           {view.citations.length > 0 && (
             <>
-              <h3>Built from these claims</h3>
-              <ul className="claims">
+              <p className="eyebrow">Built from {view.citations.length} of your claims</p>
+              <ol className="citations">
                 {view.citations.map((c) => (
-                  <li key={c.claimId} className="claim repeat">
+                  <li key={c.claimId}>
                     <p>{c.text}</p>
-                    <p className="claim-meta">
+                    <p className="muted">
                       From <Link href={sourceHref(user, c.sourceId)}>{c.sourceTitle}</Link>
                     </p>
                   </li>
                 ))}
-              </ul>
+              </ol>
             </>
           )}
         </section>

@@ -32,59 +32,75 @@ async function Source({ params, searchParams }: Pick<Props, 'params' | 'searchPa
   const waiting = statusLabel(d.status);
 
   return (
-    <Shell user={user} current="source">
-      <article className="stack wide">
-        <p>
-          <Link href={dashboardHref(user)}>Library</Link>
-        </p>
-        <header className="stack">
-          <h1>{d.title}</h1>
-          <p className="muted">
-            <a href={d.url} target="_blank" rel="noreferrer">
-              {hostOf(d.url) || d.url}
-            </a>{' '}
-            <span>Saved {formatDate(record.savedAt)}</span>{' '}
-            <span>{record.readAt ? `Read ${formatDate(record.readAt)}` : 'Unread'}</span>
-          </p>
-        </header>
+    <Shell user={user} current="library">
+      <div className="columns">
+        <article className="stack feed">
+          <div>
+            <Link href={dashboardHref(user)}>Back to what&apos;s new</Link>
+            <h1 className="headline source-title">{d.title}</h1>
+            <p className="muted">
+              <a href={d.url} target="_blank" rel="noreferrer">
+                {hostOf(d.url) || d.url}
+              </a>
+              <span>Saved {formatDate(record.savedAt)}</span>
+              <span>{record.readAt ? `Read ${formatDate(record.readAt)}` : 'Unread'}</span>
+            </p>
+          </div>
 
-        {waiting !== null ? <Waiting status={d.status} user={user} /> : <Verdict d={d} />}
+          {waiting !== null ? (
+            <Waiting status={d.status} user={user} />
+          ) : (
+            <>
+              <Verdict d={d} />
+              {d.status === 'partial' && <p className="status warn">Only part of this page could be checked.</p>}
+              {d.tldr && (
+                <section className="stack" aria-labelledby="tldr-title">
+                  <h2 id="tldr-title" className="eyebrow">
+                    TL;DR of what&apos;s new
+                  </h2>
+                  <ul className="tldr">
+                    {d.tldr.bullets.map((b) => (
+                      <li key={b}>{b}</li>
+                    ))}
+                  </ul>
+                  {d.tldr.whyItMatters && (
+                    <p className="muted">
+                      <strong>Why it matters.</strong> {d.tldr.whyItMatters}
+                    </p>
+                  )}
+                </section>
+              )}
+              <Claims d={d} user={user} />
+            </>
+          )}
+        </article>
 
         {waiting === null && (
-          <>
-            {d.status === 'partial' && <p className="status warn">Only part of this page could be checked.</p>}
-            {d.tldr && (
-              <section className="panel" aria-labelledby="tldr-title">
-                <h2 id="tldr-title">TL;DR</h2>
-                <ul>
-                  {d.tldr.bullets.map((b) => (
-                    <li key={b}>{b}</li>
-                  ))}
-                </ul>
-                {d.tldr.whyItMatters && (
-                  <p>
-                    <strong>Why it matters.</strong> {d.tldr.whyItMatters}
-                  </p>
-                )}
-              </section>
-            )}
-            <Claims d={d} user={user} />
+          <aside className="stack" aria-label="Context">
+            <section className="panel" aria-labelledby="graph-title">
+              <h2 id="graph-title">Where it connects</h2>
+              <GraphView user={user} sourceId={d.id} height={260} />
+              <ShowQuery user={user} />
+            </section>
             {d.highlights.length > 0 && (
-              <section className="stack" aria-labelledby="hl-title">
+              <section className="panel" aria-labelledby="hl-title">
                 <h2 id="hl-title">Your highlights</h2>
                 {d.highlights.map((h) => (
                   <blockquote key={h}>{h}</blockquote>
                 ))}
               </section>
             )}
-            <section className="stack" aria-labelledby="graph-title">
-              <h2 id="graph-title">Neighborhood</h2>
-              <GraphView user={user} sourceId={d.id} />
-              <ShowQuery user={user} />
-            </section>
-          </>
+            <div className="actions">
+              <Link className="button primary" href={dashboardHref(user, '/ask')}>
+                Ask about your saves
+              </Link>
+              <Link className="button" href={dashboardHref(user, '/graph')}>
+                Open full graph
+              </Link>
+            </div>
+          </aside>
         )}
-      </article>
+      </div>
     </Shell>
   );
 }
@@ -109,8 +125,7 @@ function Waiting({ status, user }: { status: SourceDetail["status"]; user: strin
 
 function Verdict({ d }: { d: SourceDetail }) {
   return (
-    <section className="verdict" aria-label="New versus repeated">
-      <Ledger newPart={d.newCount} repeatPart={d.repeatCount} size="lg" label={`${d.newCount} new claims, ${d.repeatCount} repeated`} />
+    <section className="panel verdict" aria-label="New versus repeated">
       <dl className="tally">
         <div className="new">
           <dd>{d.newCount}</dd>
@@ -125,6 +140,7 @@ function Verdict({ d }: { d: SourceDetail }) {
           <dt>new ratio</dt>
         </div>
       </dl>
+      <Ledger newPart={d.newCount} repeatPart={d.repeatCount} size="lg" label={`${d.newCount} new claims, ${d.repeatCount} repeated`} />
     </section>
   );
 }
@@ -132,25 +148,39 @@ function Verdict({ d }: { d: SourceDetail }) {
 function Claims({ d, user }: { d: SourceDetail; user: string }) {
   if (d.newCount + d.repeatCount === 0) return <p className="empty">No claims were found on this page.</p>;
   return (
-    <section className="stack" aria-labelledby="claims-title">
-      <h2 id="claims-title">Claims</h2>
-      <ul className="claims">
-        {d.newClaims.map((c) => (
-          <li key={c.id} className="claim new">
-            <p>{c.text}</p>
-            <p className="claim-meta">New to you</p>
-          </li>
-        ))}
-        {d.repeats.map((r) => (
-          <li key={`${r.sourceId}:${r.text}`} className="claim repeat">
-            <p>{r.text}</p>
-            <p className="claim-meta">
-              Already known. First seen in <Link href={sourceHref(user, r.sourceId)}>{r.sourceTitle}</Link>
-              {r.originalText !== r.text && <span className="original">Original: {r.originalText}</span>}
-            </p>
-          </li>
-        ))}
-      </ul>
-    </section>
+    <>
+      <section className="stack" aria-labelledby="new-title">
+        <h2 id="new-title">
+          New to you <span className="count new">{d.newCount}</span>
+        </h2>
+        {d.newCount === 0 && <p className="muted">Nothing new here. You had all of it already.</p>}
+        <ul className="claims">
+          {d.newClaims.map((c) => (
+            <li key={c.id} className="claim new">
+              <span className="pill">NEW</span>
+              <span>{c.text}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+      {d.repeatCount > 0 && (
+        <section className="stack" aria-labelledby="known-title">
+          <h2 id="known-title" className="dim">
+            Already known <span className="count">{d.repeatCount}</span>
+          </h2>
+          <ul className="claims">
+            {d.repeats.map((r) => (
+              <li key={`${r.sourceId}:${r.text}`} className="claim repeat">
+                <p>{r.text}</p>
+                <p className="claim-meta">
+                  You read this in <Link href={sourceHref(user, r.sourceId)}>{r.sourceTitle}</Link>
+                  {r.originalText !== r.text && <span className="original">Original: {r.originalText}</span>}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </>
   );
 }

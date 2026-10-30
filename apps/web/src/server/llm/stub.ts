@@ -68,6 +68,17 @@ export const stubProvider: LlmProvider = {
     };
   },
 
+  async explainNode(node, neighbors) {
+    const by = (t: string) => neighbors.filter((n) => n.type === t).map((n) => n.label);
+    const parts = [`This ${node.type.toLowerCase()} is "${node.label}".`];
+    for (const t of ['Source', 'Claim', 'Concept', 'Project']) {
+      const labels = by(t).slice(0, 3);
+      if (labels.length) parts.push(`It connects to ${by(t).length} ${t.toLowerCase()}(s), such as ${labels.map((l) => `"${l}"`).join(', ')}.`);
+    }
+    if (parts.length === 1) parts.push('It has no connections yet.');
+    return { explanation: parts.join(' ') };
+  },
+
   async answer(_question, claims) {
     const used = claims.slice(0, STUB_ANSWER_CLAIMS);
     return { answer: used.map((c) => c.claimText).join(' '), usedClaimIds: used.map((c) => c.claimId) };

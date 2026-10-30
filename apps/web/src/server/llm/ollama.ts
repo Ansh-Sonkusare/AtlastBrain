@@ -1,6 +1,6 @@
 import type { z } from 'zod';
 import { STEP_SCHEMAS, jsonSchemaFor } from './schemas';
-import { answerPrompt, linkPrompt, splitPrompt, tldrPrompt, truncateText, type StepPrompt } from './prompts';
+import { answerPrompt, explainPrompt, linkPrompt, splitPrompt, tldrPrompt, truncateText, type StepPrompt } from './prompts';
 import type { LlmProvider } from './types';
 
 export const OLLAMA_MODEL = 'qwen3:8b';
@@ -43,5 +43,6 @@ export function createOllamaProvider(opts: { url?: string; model?: string; fetch
     linkConcepts: (c, k, pr) => run({ ...linkPrompt(c, k, pr), step: 'link' }),
     writeTldr: (n, pr) => run({ ...tldrPrompt(n, pr), step: 'tldr' }),
     answer: (q, claims) => run({ ...answerPrompt(q, claims), step: 'answer' }),
+    explainNode: (n, nb) => run({ ...explainPrompt(n, nb), step: 'explain' }),
   };
 }

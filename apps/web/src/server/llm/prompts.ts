@@ -1,5 +1,6 @@
 import type { ClaimMatch, Project } from '../types';
-import type { StepName } from './schemas';
+import { MAX_LABEL_CHARS, MAX_NEIGHBORS, type StepName } from './schemas';
+import type { ExplainNode } from './types';
 
 export const MAX_INPUT_CHARS = 48_000;
 
@@ -51,5 +52,17 @@ export function answerPrompt(question: string, claims: ClaimMatch[]): StepPrompt
     system:
       'You answer a question using only the numbered claims the user saved. Do not use outside knowledge. If the claims do not cover the question, say so in the answer and return no used ids. Keep the answer to 1 to 4 sentences. usedClaimIds lists the id of every claim you relied on, in the order you used them. Use ids exactly as listed.',
     user: `Question: ${question}\n\nClaims:\n${claims.map((c) => `- id=${c.claimId} | ${c.claimText} (from: ${c.sourceTitle})`).join('\n')}`,
+  };
+}
+
+const clip = (s: string) => (s.length > MAX_LABEL_CHARS ? `${s.slice(0, MAX_LABEL_CHARS)}...` : s);
+
+export function explainPrompt(node: ExplainNode, neighbors: ExplainNode[]): StepPrompt {
+  const lines = neighbors.slice(0, MAX_NEIGHBORS).map((n) => `- ${n.type}: ${clip(n.label)}`);
+  return {
+    step: 'explain',
+    system:
+      "You explain one node of the user's personal knowledge graph in 2 to 4 sentences of plain prose, no lists or markdown. Say what the node is, and why it connects to its neighbors. For a Concept: what it means, which saved claims or sources mention it, and which project it matters for. For a Claim: what it says in plain words and which source it came from. For a Project: what the user has read toward it. For a Source: what it was about and what was new. Address the reader as \"you\" (it is their own graph), never \"the user\". Do not describe the graph itself or say what it does not show. Use only the node and neighbors given; do not invent facts about the reader.",
+    user: `Node (${node.type}): ${clip(node.label)}\n\nNeighbors:\n${lines.length ? lines.join('\n') : '(none)'}`,
   };
 }

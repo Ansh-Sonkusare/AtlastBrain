@@ -9,12 +9,26 @@ export function QuickNote({ disabled, onSave }: { disabled: boolean; onSave: (te
     await onSave(value);
   };
   return (
-    <footer>
-      <label htmlFor="note">Quick note</label>
-      <textarea id="note" rows={3} value={text} onChange={(e) => setText(e.target.value)} placeholder="Type or dictate a note" />
-      <button disabled={disabled || !text.trim()} onClick={submit}>
-        Save note
-      </button>
+    <footer className="card note">
+      <label htmlFor="note" className="eyebrow">
+        Quick note
+      </label>
+      <textarea
+        id="note"
+        rows={2}
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) void submit();
+        }}
+        placeholder="Type or dictate a thought"
+      />
+      <div className="note-bar">
+        <span className="muted">⌘ Enter to save</span>
+        <button disabled={disabled || !text.trim()} onClick={submit}>
+          Save note
+        </button>
+      </div>
     </footer>
   );
 }

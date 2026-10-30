@@ -1,3 +1,4 @@
+import type { ExplainNode } from '../../server/llm/types';
 import type { BrainAnswer, Neighborhood } from '../../server/types';
 
 /** Browser-side calls to our own API routes. There is no auth yet, so the user id is a header. */
@@ -19,6 +20,11 @@ async function json<T>(res: Response): Promise<T> {
 
 export const ask = (user: string, question: string) =>
   call(user, '/api/ask', { method: 'POST', body: JSON.stringify({ question }) }).then((r) => json<BrainAnswer>(r));
+
+export const explain = (user: string, node: ExplainNode, neighbors: ExplainNode[]) =>
+  call(user, '/api/explain', { method: 'POST', body: JSON.stringify({ node, neighbors }) }).then((r) =>
+    json<{ explanation: string }>(r),
+  );
 
 export const neighborhood = (user: string, sourceId: string) =>
   call(user, `/api/graph/${encodeURIComponent(sourceId)}`).then((r) => json<Neighborhood>(r));

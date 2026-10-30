@@ -3,7 +3,7 @@
     "id": "x402-overlap",
     "url": "https://example.com/demo/how-autonomous-agents-pay-for-apis-with-x402",
     "title": "How Autonomous Agents Pay for APIs With x402",
-    "body": "With x402, an autonomous program can buy access to a web resource and skip signup, keys, and recurring plans. The signed payment payload travels in the X-PAYMENT header of the retried request, in base64 encoding. The x402 protocol also supports payments on the Solana network in addition to EVM chains. Because the facilitator covers the blockchain gas fee, the paying client does not have to hold a native gas token. Verification through a facilitator checks a payload against the requirements and never broadcasts an on-chain transaction. Even an untrustworthy facilitator is able to withhold settlement or stall a payment for an extended period. The x402 reference implementation is published as open source under the Apache 2.0 license on GitHub. Per-call overhead falls under batching, since a single blockchain transaction takes the place of many individual transfers. If one payment inside a batch fails, the batch must be retried or split so the remaining payments are not blocked. Every authorization carries a random nonce, which stops the token contract from accepting a replayed copy. The x402 Bazaar is a discovery catalog where agents can find paid endpoints to call. A typical safeguard is a cap per request that refuses any payment requirement exceeding a configured amount.",
+    "body": "With x402, an autonomous program can buy access to a web resource and skip signup, keys, and recurring plans. Coinbase introduced x402 in 2025 to turn the long-reserved HTTP 402 Payment Required status code into a working payment standard. Governance of the specification now sits with the x402 Foundation, a neutral body that Cloudflare helped launch.\n\nAn x402 server answers an unpaid request with a 402 response that lists what the client has to pay. Each payment requirement names a network, an asset, a payTo address, and the maximum amount required. The signed payment payload travels in the X-PAYMENT header of the retried request, in base64 encoding. After settlement succeeds, the server returns the resource together with an X-PAYMENT-RESPONSE header.\n\nPayments in x402 settle in stablecoins, and USDC is the most common asset. Base, the Ethereum layer-two network developed by Coinbase, is the main network for x402 payments. The x402 protocol also supports payments on the Solana network in addition to EVM chains. Developers try out x402 flows on the Base Sepolia test network with free test tokens.\n\nBecause the facilitator covers the blockchain gas fee, the paying client does not have to hold a native gas token. Verification through a facilitator checks a payload against the requirements and never broadcasts an on-chain transaction. Even an untrustworthy facilitator is able to withhold settlement or stall a payment for an extended period.\n\nThe x402 reference implementation is published as open source under the Apache 2.0 license on GitHub. Middleware packages for Express and Hono add an x402 paywall to an existing route with a few lines of configuration. Model Context Protocol servers can wrap their tools in x402 so that an AI assistant pays per tool call.\n\nPer-call overhead falls under batching, since a single blockchain transaction takes the place of many individual transfers. Batched settlement delays the final payment confirmation, so the seller carries credit risk during the batching window. If one payment inside a batch fails, the batch must be retried or split so the remaining payments are not blocked.\n\nA proposed upto scheme lets a server charge any amount up to a signed maximum, which suits metered usage such as LLM tokens. Some sellers raise the quoted price in their 402 response when demand on an endpoint spikes. Refunds are outside the core protocol, so a seller who wants to refund must send a separate transfer back to the payer.\n\nEvery authorization carries a random nonce, which stops the token contract from accepting a replayed copy. The x402 Bazaar is a discovery catalog where agents can find paid endpoints to call. A typical safeguard is a cap per request that refuses any payment requirement exceeding a configured amount. Allowlists of approved seller domains stop an agent from paying unknown or malicious endpoints. Daily and monthly budgets protect an agent wallet from loops that keep calling a paid endpoint.",
     "labels": [
       {
         "sentence": "With x402, an autonomous program can buy access to a web resource and skip signup, keys, and recurring plans.",
@@ -12,16 +12,64 @@
         "matchSentence": "The x402 protocol lets software agents pay for web resources without accounts, API keys, or subscriptions."
       },
       {
+        "sentence": "Coinbase introduced x402 in 2025 to turn the long-reserved HTTP 402 Payment Required status code into a working payment standard.",
+        "known": true,
+        "matches": "seed-01",
+        "matchSentence": "Coinbase introduced the x402 protocol in 2025 to turn that reserved status code into a working payment standard."
+      },
+      {
+        "sentence": "Governance of the specification now sits with the x402 Foundation, a neutral body that Cloudflare helped launch.",
+        "known": false,
+        "matches": null,
+        "matchSentence": null
+      },
+      {
+        "sentence": "An x402 server answers an unpaid request with a 402 response that lists what the client has to pay.",
+        "known": true,
+        "matches": "seed-01",
+        "matchSentence": "An x402 server answers an unpaid request with a 402 response that lists what the client must pay."
+      },
+      {
+        "sentence": "Each payment requirement names a network, an asset, a payTo address, and the maximum amount required.",
+        "known": true,
+        "matches": "seed-02",
+        "matchSentence": "Each payment requirement names a network, an asset, a payTo address, and a maximum amount required."
+      },
+      {
         "sentence": "The signed payment payload travels in the X-PAYMENT header of the retried request, in base64 encoding.",
         "known": true,
         "matches": "seed-02",
         "matchSentence": "The client puts the signed payment payload in the X-PAYMENT request header, encoded as base64."
       },
       {
+        "sentence": "After settlement succeeds, the server returns the resource together with an X-PAYMENT-RESPONSE header.",
+        "known": true,
+        "matches": "seed-02",
+        "matchSentence": "After successful settlement, the server returns the resource together with an X-PAYMENT-RESPONSE header."
+      },
+      {
+        "sentence": "Payments in x402 settle in stablecoins, and USDC is the most common asset.",
+        "known": true,
+        "matches": "seed-01",
+        "matchSentence": "Payments in x402 are settled in stablecoins, with USDC as the most common asset."
+      },
+      {
+        "sentence": "Base, the Ethereum layer-two network developed by Coinbase, is the main network for x402 payments.",
+        "known": true,
+        "matches": "seed-08",
+        "matchSentence": "Base is an Ethereum layer-two network developed by Coinbase, and it is the main network for x402 payments."
+      },
+      {
         "sentence": "The x402 protocol also supports payments on the Solana network in addition to EVM chains.",
         "known": false,
         "matches": null,
         "matchSentence": null
+      },
+      {
+        "sentence": "Developers try out x402 flows on the Base Sepolia test network with free test tokens.",
+        "known": true,
+        "matches": "seed-08",
+        "matchSentence": "Base Sepolia is the test network where developers try x402 flows with free test tokens."
       },
       {
         "sentence": "Because the facilitator covers the blockchain gas fee, the paying client does not have to hold a native gas token.",
@@ -48,16 +96,52 @@
         "matchSentence": null
       },
       {
+        "sentence": "Middleware packages for Express and Hono add an x402 paywall to an existing route with a few lines of configuration.",
+        "known": false,
+        "matches": null,
+        "matchSentence": null
+      },
+      {
+        "sentence": "Model Context Protocol servers can wrap their tools in x402 so that an AI assistant pays per tool call.",
+        "known": false,
+        "matches": null,
+        "matchSentence": null
+      },
+      {
         "sentence": "Per-call overhead falls under batching, since a single blockchain transaction takes the place of many individual transfers.",
         "known": true,
         "matches": "seed-06",
         "matchSentence": "Batching cuts per-call overhead because one blockchain transaction replaces dozens or hundreds of separate transfers."
       },
       {
+        "sentence": "Batched settlement delays the final payment confirmation, so the seller carries credit risk during the batching window.",
+        "known": true,
+        "matches": "seed-06",
+        "matchSentence": "Batched settlement delays final payment confirmation, so the seller carries credit risk during the batching window."
+      },
+      {
         "sentence": "If one payment inside a batch fails, the batch must be retried or split so the remaining payments are not blocked.",
         "known": true,
         "matches": "seed-07",
         "matchSentence": "Failed transactions inside a batch must be retried or split, otherwise one bad payment can block the others."
+      },
+      {
+        "sentence": "A proposed upto scheme lets a server charge any amount up to a signed maximum, which suits metered usage such as LLM tokens.",
+        "known": false,
+        "matches": null,
+        "matchSentence": null
+      },
+      {
+        "sentence": "Some sellers raise the quoted price in their 402 response when demand on an endpoint spikes.",
+        "known": false,
+        "matches": null,
+        "matchSentence": null
+      },
+      {
+        "sentence": "Refunds are outside the core protocol, so a seller who wants to refund must send a separate transfer back to the payer.",
+        "known": false,
+        "matches": null,
+        "matchSentence": null
       },
       {
         "sentence": "Every authorization carries a random nonce, which stops the token contract from accepting a replayed copy.",
@@ -76,6 +160,18 @@
         "known": true,
         "matches": "seed-09",
         "matchSentence": "A common control is a per-request cap that rejects any payment requirement above a configured amount."
+      },
+      {
+        "sentence": "Allowlists of approved seller domains stop an agent from paying unknown or malicious endpoints.",
+        "known": true,
+        "matches": "seed-09",
+        "matchSentence": "Allowlists of approved seller domains stop an agent from paying unknown or malicious endpoints."
+      },
+      {
+        "sentence": "Daily and monthly budgets protect an agent wallet from loops that keep calling a paid endpoint.",
+        "known": true,
+        "matches": "seed-09",
+        "matchSentence": "Daily and monthly budgets protect an agent wallet from loops that call a paid endpoint repeatedly."
       }
     ]
   },

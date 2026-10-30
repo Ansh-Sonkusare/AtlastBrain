@@ -6,7 +6,7 @@ export default defineConfig({
     name: 'Second Brain',
     description: 'Save a page and see only what is new to you, checked against everything you have read.',
     permissions: ['activeTab', 'scripting', 'sidePanel', 'storage'],
-    host_permissions: ['http://localhost:3000/*'],
+    host_permissions: ['http://*/*', 'https://*/*'],
     action: { default_title: 'Open Second Brain' },
     commands: {
       'save-page': {

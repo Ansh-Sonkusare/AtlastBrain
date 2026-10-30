@@ -7,7 +7,7 @@ import { buildAnthropicRequest, createAnthropicProvider, HAIKU, SONNET } from '.
 import { assertUnderCap, CostCapError, priceUsd, recordCall, totalSpendUsd } from './cost';
 import { createLlm } from './index';
 import { buildOllamaRequest } from './ollama';
-import { answerPrompt, splitPrompt } from './prompts';
+import { answerPrompt, explainPrompt, splitPrompt } from './prompts';
 import { jsonSchemaFor } from './schemas';
 import { stubProvider } from './stub';
 import type { LlmProvider } from './types';
@@ -149,7 +149,7 @@ describe('cost guard', () => {
     const fallback: LlmProvider = { ...stubProvider, splitClaims: async () => ({ claims: ['from fallback'] }) };
     const logs: string[] = [];
     const provider = createAnthropicProvider({
-      models: { split: HAIKU, link: HAIKU, tldr: HAIKU, answer: HAIKU },
+      models: { split: HAIKU, link: HAIKU, tldr: HAIKU, answer: HAIKU, explain: HAIKU },
       fallback,
       client: { messages: { create: async () => { apiCalls++; throw new Error('should not run'); } } } as never,
       log: (l) => logs.push(l),
@@ -166,7 +166,7 @@ describe('cost guard', () => {
       usage: { input_tokens: 1000, output_tokens: 100 },
     });
     const provider = createAnthropicProvider({
-      models: { split: HAIKU, link: HAIKU, tldr: HAIKU, answer: HAIKU },
+      models: { split: HAIKU, link: HAIKU, tldr: HAIKU, answer: HAIKU, explain: HAIKU },
       fallback: stubProvider,
       client: { messages: { create } } as never,
     });
@@ -181,7 +181,7 @@ describe('cost guard', () => {
       usage: { input_tokens: 1000, output_tokens: 100 },
     });
     const provider = createAnthropicProvider({
-      models: { split: HAIKU, link: HAIKU, tldr: HAIKU, answer: HAIKU },
+      models: { split: HAIKU, link: HAIKU, tldr: HAIKU, answer: HAIKU, explain: HAIKU },
       fallback: stubProvider,
       client: { messages: { create } } as never,
     });
@@ -219,8 +219,33 @@ describe('request builders', () => {
     expect(req.format).toEqual(jsonSchemaFor('split'));
   });
   it('sends no integer bounds, which Claude structured output rejects', () => {
-    for (const step of ['split', 'link', 'tldr', 'answer'] as const) {
+    for (const step of ['split', 'link', 'tldr', 'answer', 'explain'] as const) {
       expect(JSON.stringify(jsonSchemaFor(step))).not.toMatch(/"(minimum|maximum)"/);
     }
+  });
+});
+
+describe('explain step', () => {
+  const node = { type: 'Concept', label: 'Vector Search' } as const;
+  const near = [
+    { type: 'Claim', label: 'Vector search finds similar claims.' },
+    { type: 'Project', label: 'Second Brain' },
+  ] as const;
+
+  it('stub explains deterministically from the node and its neighbors', async () => {
+    const res = await stubProvider.explainNode(node, [...near]);
+    expect(res).toEqual(await stubProvider.explainNode(node, [...near]));
+    expect(res.explanation).toContain('Vector Search');
+    expect(res.explanation).toContain('Second Brain');
+    expect((await stubProvider.explainNode(node, [])).explanation).toContain('no connections');
+  });
+
+  it('prompt lists the node, caps neighbors at 30 and truncates long labels', () => {
+    const many = Array.from({ length: 40 }, (_, i) => ({ type: 'Claim' as const, label: `c${i} ${'x'.repeat(500)}` }));
+    const p = explainPrompt(node, many);
+    expect(p.step).toBe('explain');
+    expect(p.user).toContain('Node (Concept): Vector Search');
+    expect(p.user.match(/^- Claim:/gm)).toHaveLength(30);
+    expect(p.user).not.toContain('x'.repeat(400));
   });
 });

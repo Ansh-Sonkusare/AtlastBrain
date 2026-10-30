@@ -3,14 +3,17 @@ import type { SourceRecord } from '../../server/graph/port';
 import type { SourceResponse } from '../../server/pipeline/result';
 import {
   buildAnswerView,
+  buildDailyDigest,
   buildSourceDetail,
   buildUsage,
   dashboardHref,
   formatDate,
   mergeLibrary,
+  projectCoverage,
   resolveUser,
   sourceHref,
   toLibraryItem,
+  type SourceDetail,
 } from './view-model';
 
 const record = (over: Partial<SourceRecord> = {}): SourceRecord => ({
@@ -116,5 +119,51 @@ describe('formatDate', () => {
   it('formats in UTC and returns empty for garbage', () => {
     expect(formatDate('2026-10-29T23:59:00.000Z')).toBe('Oct 29, 2026');
     expect(formatDate('nope')).toBe('');
+  });
+});
+
+describe('projectCoverage', () => {
+  it('counts a project concept as read only when a read save made a claim about it', () => {
+    const exp = {
+      projects: [{ id: 'p', name: 'Demo', description: '' }],
+      concepts: [
+        { id: 'a', name: 'A', summary: '', projects: ['Demo'] },
+        { id: 'b', name: 'B', summary: '', projects: ['Demo'] },
+        { id: 'c', name: 'C', summary: '', projects: [] },
+      ],
+      sources: [
+        { id: 's1', title: '', url: '', savedAt: '', readAt: '2026-10-01', tldr: null, made: [{ id: 'x', text: '', concepts: ['A', 'C'] }], repeated: [], highlights: [] },
+        { id: 's2', title: '', url: '', savedAt: '', readAt: null, tldr: null, made: [{ id: 'y', text: '', concepts: ['B'] }], repeated: [], highlights: [] },
+      ],
+    };
+    expect(projectCoverage(exp)).toEqual([{ name: 'Demo', read: 1, total: 2 }]);
+  });
+});
+
+describe('buildDailyDigest', () => {
+  const d = (id: string, newIds: string[], repeatCount = 0) =>
+    ({ id, title: id.toUpperCase(), newCount: newIds.length, repeatCount, percentNew: 50, newClaims: newIds.map((c) => ({ id: c, text: c })) }) as SourceDetail;
+
+  it('groups saves by UTC day, newest first, and sums the day', () => {
+    const days = buildDailyDigest([
+      { detail: d('a', ['a1']), savedAt: '2026-10-28T09:00:00Z' },
+      { detail: d('b', ['b1', 'b2'], 3), savedAt: '2026-10-29T08:00:00Z' },
+      { detail: d('c', ['c1'], 1), savedAt: '2026-10-29T20:00:00Z' },
+    ]);
+    expect(days.map((x) => x.day)).toEqual(['2026-10-29', '2026-10-28']);
+    expect([days[0].newTotal, days[0].knownTotal]).toEqual([3, 4]);
+    expect(days[0].saves.map((s) => s.id)).toEqual(['c', 'b']);
+  });
+
+  it('takes ideas round-robin across saves and caps them', () => {
+    const [day] = buildDailyDigest(
+      [
+        { detail: d('a', ['a1', 'a2', 'a3']), savedAt: '2026-10-29T10:00:00Z' },
+        { detail: d('b', ['b1']), savedAt: '2026-10-29T09:00:00Z' },
+      ],
+      3,
+    );
+    expect(day.ideas.map((i) => i.id)).toEqual(['a1', 'b1', 'a2']);
+    expect(day.ideas[1].sourceTitle).toBe('B');
   });
 });

@@ -2,13 +2,15 @@ import { PENDING_CAPTURE_KEY, type ExtractMessage, type ExtractReply, type PageP
 
 async function extractFromTab(tabId: number | undefined): Promise<ExtractReply> {
   if (tabId === undefined) return { ok: false, error: 'No active tab.' };
+  const { url } = await browser.tabs.get(tabId);
+  if (!url || !/^https?:/.test(url)) return { ok: false, error: 'Chrome does not let extensions read this page. Open a web page and try again.' };
   try {
     const [injection] = await browser.scripting.executeScript({ target: { tabId }, files: ['/extract.js'] });
     const page = injection?.result as PagePayload | undefined;
     if (!page || !page.text) return { ok: false, error: 'No readable text on this page.' };
     return { ok: true, page };
   } catch {
-    return { ok: false, error: 'Cannot read this tab. Press Alt+S or click the toolbar button on the page you want to save.' };
+    return { ok: false, error: 'Cannot read this tab. Reload the page and try again.' };
   }
 }
 

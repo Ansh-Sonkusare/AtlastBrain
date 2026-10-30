@@ -3,7 +3,14 @@ import type { ReactNode } from 'react';
 import type { SourceStatus } from '../../server/types';
 import { dashboardHref } from './view-model';
 
-export function Shell({ user, current, children }: { user: string; current: 'library' | 'ask' | 'source'; children: ReactNode }) {
+export type NavKey = 'new' | 'library' | 'graph' | 'ask';
+
+export function Shell({ user, current, full = false, children }: { user: string; current: NavKey; full?: boolean; children: ReactNode }) {
+  const link = (key: NavKey, path: string, label: string) => (
+    <Link href={dashboardHref(user, path)} aria-current={current === key ? 'page' : undefined}>
+      {label}
+    </Link>
+  );
   return (
     <>
       <header className="topbar">
@@ -11,27 +18,45 @@ export function Shell({ user, current, children }: { user: string; current: 'lib
           Second Brain
         </Link>
         <nav aria-label="Dashboard">
-          <Link href={dashboardHref(user)} aria-current={current === 'library' ? 'page' : undefined}>
-            Library
-          </Link>
-          <Link href={dashboardHref(user, '/ask')} aria-current={current === 'ask' ? 'page' : undefined}>
-            Ask
-          </Link>
+          {link('new', '', "What's new")}
+          {link('library', '/library', 'Library')}
+          {link('graph', '/graph', 'Graph')}
+          {link('ask', '/ask', 'Ask')}
         </nav>
         <span className="who">{user}</span>
       </header>
-      <main className="page">{children}</main>
+      <main className={full ? 'page full' : 'page'}>{children}</main>
     </>
   );
 }
 
+/** Skeleton of the page shape while the server streams it in; the label is for screen readers. */
 export function PageLoading({ label }: { label: string }) {
   return (
-    <main className="page">
-      <p className="status" role="status">
-        {label}
-      </p>
-    </main>
+    <>
+      <header className="topbar" aria-hidden="true">
+        <span className="brand">Second Brain</span>
+        <span className="skeleton-line" style={{ width: '16rem', height: 28 }} />
+      </header>
+      <main className="page">
+        <p className="visually-hidden" role="status">
+          {label}
+        </p>
+        <div className="columns" aria-hidden="true">
+          <div className="stack">
+            <span className="skeleton-line" style={{ width: '8rem' }} />
+            <span className="skeleton-line" style={{ width: '70%', height: 40 }} />
+            <span className="skeleton-line" style={{ width: '50%' }} />
+            <div className="skeleton" style={{ height: 220 }} />
+            <div className="skeleton" style={{ height: 180 }} />
+          </div>
+          <div className="stack">
+            <div className="skeleton" style={{ height: 260 }} />
+            <div className="skeleton" style={{ height: 140 }} />
+          </div>
+        </div>
+      </main>
+    </>
   );
 }
 

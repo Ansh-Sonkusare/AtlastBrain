@@ -23,13 +23,17 @@ export const AnswerResult = z.object({
 });
 export type AnswerResult = z.infer<typeof AnswerResult>;
 
-export type StepName = 'split' | 'link' | 'tldr' | 'answer';
+export const ExplainResult = z.object({ explanation: z.string() });
+export type ExplainResult = z.infer<typeof ExplainResult>;
+
+export type StepName = 'split' | 'link' | 'tldr' | 'answer' | 'explain';
 
 export const STEP_SCHEMAS = {
   split: SplitClaimsResult,
   link: LinkConceptsResult,
   tldr: TldrResult,
   answer: AnswerResult,
+  explain: ExplainResult,
 } as const;
 
 /** One JSON schema per step, shared by every provider. */
@@ -52,3 +56,5 @@ function stripIntegerBounds(node: unknown): unknown {
 
 export const MAX_BULLETS = 3;
 export const MAX_CLAIMS = 15;
+export const MAX_NEIGHBORS = 30;
+export const MAX_LABEL_CHARS = 300;

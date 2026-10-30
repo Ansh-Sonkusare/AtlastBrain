@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildForceData, NODE_COLORS, REPEAT_COLOR, REPEAT_LINK_COLOR } from './graph-model';
+import { buildForceData, buildWholeGraph, filterForceData, neighborsOf, NODE_COLORS, REPEAT_COLOR, REPEAT_LINK_COLOR } from './graph-model';
 import type { Neighborhood } from '../../server/types';
 
 const hood: Neighborhood = {
@@ -54,5 +54,32 @@ describe('buildForceData', () => {
 
   it('drops links to unknown nodes', () => {
     expect(data.links).toHaveLength(5);
+  });
+});
+
+describe('whole graph', () => {
+  const exp = {
+    projects: [{ id: 'p', name: 'Demo', description: '' }],
+    concepts: [{ id: 'k', name: 'Graphs', summary: '', projects: ['Demo', 'Gone'] }],
+    sources: [
+      { id: 's', title: 'Article', url: '', savedAt: '', readAt: null, tldr: null, made: [{ id: 'c', text: 'claim', concepts: ['Graphs', 'Nope'] }], repeated: [], highlights: [] },
+    ],
+  };
+  const hood = buildWholeGraph(exp);
+  const data = buildForceData(hood, '');
+
+  it('links sources to claims, claims to concepts, concepts to projects, skipping unknown names', () => {
+    expect(hood.links.map((l) => `${l.source}>${l.target}:${l.type}`).sort()).toEqual([
+      'c>concept:k:ABOUT',
+      'concept:k>project:p:RELEVANT_TO',
+      's>c:MAKES',
+    ]);
+  });
+
+  it('hides a node type with its links, and lists neighbors both ways', () => {
+    const noClaims = filterForceData(data, new Set(['Claim']));
+    expect(noClaims.nodes.map((n) => n.type)).not.toContain('Claim');
+    expect(noClaims.links.map((l) => l.type)).toEqual(['RELEVANT_TO']);
+    expect(neighborsOf(data, 'concept:k').map((n) => n.id).sort()).toEqual(['c', 'project:p']);
   });
 });

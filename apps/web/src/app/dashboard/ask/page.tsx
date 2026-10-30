@@ -18,8 +18,9 @@ async function Ask({ searchParams }: { searchParams: PageProps<'/dashboard/ask'>
   const user = resolveUser((await searchParams).user);
   return (
     <Shell user={user} current="ask">
-      <div className="stack wide">
+      <div className="stack wide ask-page">
         <div>
+          <p className="eyebrow">Ask</p>
           <h1>Ask your brain</h1>
           <p className="muted">Answers use only claims from your own saves.</p>
         </div>

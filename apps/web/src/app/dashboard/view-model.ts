@@ -1,7 +1,7 @@
 import { ALLOWANCE } from '../../server/billing/quota';
 import type { SourceRecord } from '../../server/graph/port';
 import type { SourceResponse } from '../../server/pipeline/result';
-import type { BrainAnswer, Plan, SourceStatus, Tldr, User } from '../../server/types';
+import type { BrainAnswer, GraphExport, Plan, SourceStatus, Tldr, User } from '../../server/types';
 
 export const DEFAULT_USER = 'demo';
 export const SOURCE_STATUSES: SourceStatus[] = ['pending', 'processing', 'done', 'partial', 'blocked'];
@@ -145,4 +145,61 @@ export function hostOf(url: string): string {
   } catch {
     return '';
   }
+}
+
+export interface DigestDay {
+  /** "2026-10-29", the UTC day the saves were made. */
+  day: string;
+  newTotal: number;
+  knownTotal: number;
+  saves: { id: string; title: string; newCount: number; percentNew: number | null }[];
+  /** The day's new ideas, a few per save so one long article does not crowd out the rest. */
+  ideas: { id: string; text: string; sourceId: string; sourceTitle: string }[];
+}
+
+/** Checked saves grouped into one summary per day, newest day first. */
+export function buildDailyDigest(saves: { detail: SourceDetail; savedAt: string }[], ideasPerDay = 6): DigestDay[] {
+  const byDay = new Map<string, SourceDetail[]>();
+  for (const { detail, savedAt } of [...saves].sort((a, b) => b.savedAt.localeCompare(a.savedAt))) {
+    const day = savedAt.slice(0, 10);
+    byDay.set(day, [...(byDay.get(day) ?? []), detail]);
+  }
+  return [...byDay].map(([day, details]) => {
+    const ideas: DigestDay['ideas'] = [];
+    // Round-robin across the day's saves.
+    for (let i = 0; ideas.length < ideasPerDay && details.some((d) => i < d.newClaims.length); i++) {
+      for (const d of details) {
+        const c = d.newClaims[i];
+        if (c && ideas.length < ideasPerDay) ideas.push({ id: c.id, text: c.text, sourceId: d.id, sourceTitle: d.title });
+      }
+    }
+    return {
+      day,
+      newTotal: details.reduce((n, d) => n + d.newCount, 0),
+      knownTotal: details.reduce((n, d) => n + d.repeatCount, 0),
+      saves: details.map((d) => ({ id: d.id, title: d.title, newCount: d.newCount, percentNew: d.percentNew })),
+      ideas,
+    };
+  });
+}
+
+export function formatDay(day: string): string {
+  return DAY.format(new Date(`${day}T00:00:00Z`));
+}
+
+const DAY = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'UTC' });
+
+export interface ProjectCoverage {
+  name: string;
+  /** Concepts tied to the project that appear in at least one save you have read. */
+  read: number;
+  total: number;
+}
+
+export function projectCoverage(exp: GraphExport): ProjectCoverage[] {
+  const readConcepts = new Set(exp.sources.filter((s) => s.readAt !== null).flatMap((s) => s.made.flatMap((c) => c.concepts)));
+  return exp.projects.map((p) => {
+    const mine = exp.concepts.filter((c) => c.projects.includes(p.name));
+    return { name: p.name, read: mine.filter((c) => readConcepts.has(c.name)).length, total: mine.length };
+  });
 }
