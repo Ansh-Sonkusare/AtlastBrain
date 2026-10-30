@@ -26,14 +26,14 @@ export async function createCheckout(
   const dodo = client(env);
   let customerId = user.dodoCustomerId;
   if (!customerId) {
-    const customer = await dodo.customers.create({ email: user.email, name: user.id, metadata: { user_id: user.id } });
+    const customer = await dodo.customers.create({ email: user.email, name: user.email.split('@')[0], metadata: { user_id: user.id } });
     customerId = customer.customer_id;
     await graph.updateUser(user.id, { dodoCustomerId: customerId });
   }
   const session = await dodo.checkoutSessions.create({
     product_cart: [{ product_id: productIds(env)[product], quantity: 1 }],
     customer: { customer_id: customerId },
-    return_url: appUrl(env),
+    return_url: `${appUrl(env)}/dashboard`,
     metadata: { user_id: user.id, kind: product },
   });
   if (!session.checkout_url) throw new Error('Dodo returned no checkout_url');

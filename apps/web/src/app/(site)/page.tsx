@@ -147,7 +147,7 @@ export default function Landing() {
         <section className="band dots">
           <div className="reveal">
             <h2>Your bookmarks, finally read.</h2>
-            <p>Free for 50 saves a month. Your first brief arrives tomorrow morning.</p>
+            <p>Free for 30 saves a month.</p>
             <div className="cta-row">
               <Link href="/signup" className="cta">Get started free</Link>
               <Link href="/pricing" className="ghost">See pricing</Link>

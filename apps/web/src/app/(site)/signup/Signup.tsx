@@ -73,7 +73,7 @@ export function Signup({ mode }: { mode: 'sign-up' | 'sign-in' }) {
         </svg>
         <div className="cap rise d3">
           <p>Every page you read, <span className="soft">connected to everything you know.</span></p>
-          <p>Free for 50 saves a month.</p>
+          <p>Free for 30 saves a month.</p>
         </div>
       </aside>
     </div>

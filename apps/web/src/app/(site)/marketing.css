@@ -25,7 +25,7 @@
 .mk h1, .mk h2, .mk h3, .mk p, .mk ul, .mk ol { margin: 0; padding: 0; }
 .mk a { color: var(--ink); text-decoration: none; transition: color .2s ease; }
 .mk button { cursor: pointer; font: inherit; color: inherit; }
-.mk :focus-visible { outline: 2px solid var(--green); outline-offset: 3px; border-radius: 4px; }
+.mk :focus-visible:not([class*='cl-']) { outline: 2px solid var(--green); outline-offset: 3px; border-radius: 4px; }
 
 /* Motion */
 @keyframes mk-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
@@ -279,7 +279,7 @@
 .mk .auth { display: flex; flex-wrap: wrap; min-height: 100vh; }
 .mk .auth-l { flex: 1 1 480px; min-width: 0; padding: 32px; display: flex; flex-direction: column; }
 .mk .auth-mid { flex: 1; display: flex; align-items: center; justify-content: center; padding: 48px 0; }
-.mk .auth-box { width: 100%; max-width: 380px; display: flex; flex-direction: column; gap: 28px; }
+.mk .auth-box { width: 100%; max-width: 444px; display: flex; flex-direction: column; gap: 28px; padding: 32px; border-radius: 20px; border: 1px solid #3A362F; background: #171512; box-shadow: 0 1px 0 rgba(255,255,255,.05) inset, 0 24px 60px rgba(0,0,0,.55); }
 .mk .auth-box h1 { font-size: 32px; letter-spacing: -.04em; font-weight: 600; }
 .mk .auth-box .sub { margin-top: 10px; font-size: 15px; color: var(--mute); }
 .mk .oauths { display: flex; flex-direction: column; gap: 10px; }
