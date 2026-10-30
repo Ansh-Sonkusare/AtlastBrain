@@ -1,0 +1,15 @@
+**/.env
+**/.env.*
+!.env.example
+**/node_modules
+**/.next
+**/.output
+**/.wxt
+.local
+logs
+graft
+.audit
+.serena
+.claude
+.git
+docs

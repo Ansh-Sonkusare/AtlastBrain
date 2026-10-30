@@ -43,9 +43,9 @@ export function costCapUsd(): number {
 }
 
 export function totalSpendUsd(file = costLogPath()): number {
-  if (!existsSync(file)) return 0;
+  if (!existsSync(/* turbopackIgnore: true */ file)) return 0;
   let sum = 0;
-  for (const line of readFileSync(file, 'utf8').split('\n')) {
+  for (const line of readFileSync(/* turbopackIgnore: true */ file, 'utf8').split('\n')) {
     if (!line.trim()) continue;
     sum += (JSON.parse(line) as CostEntry).usd;
   }

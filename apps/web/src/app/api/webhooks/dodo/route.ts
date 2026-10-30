@@ -1,7 +1,9 @@
+import { after } from 'next/server';
 import { Webhook } from 'standardwebhooks';
 import { withBillingLock } from '../../../../server/billing/lock';
 import { handleDodoEvent } from '../../../../server/billing/webhook';
-import { getGraph } from '../../../../server/deps';
+import { getDeps } from '../../../../server/deps';
+import { processSource } from '../../../../server/pipeline/process';
 
 export async function POST(request: Request): Promise<Response> {
   const secret = process.env.DODO_PAYMENTS_WEBHOOK_KEY;
@@ -18,7 +20,17 @@ export async function POST(request: Request): Promise<Response> {
   } catch {
     return Response.json({ error: 'invalid signature' }, { status: 400 });
   }
-  const graph = await getGraph();
-  const outcome = await withBillingLock(() => handleDodoEvent(graph, event, webhookId, new Date()));
+  const deps = await getDeps();
+  const outcome = await withBillingLock(() => handleDodoEvent(deps.graph, event, webhookId, new Date()));
+  // A payment can release blocked saves back to `pending`; nothing else picks them up on Vercel.
+  if (outcome === 'applied') {
+    after(async () => {
+      for (const source of await deps.graph.listPendingSources(10)) {
+        await processSource(deps, source.userId, source.id, { markRead: true }).catch((err) =>
+          console.error(`webhook: source ${source.id} failed:`, err),
+        );
+      }
+    });
+  }
   return Response.json({ outcome });
 }

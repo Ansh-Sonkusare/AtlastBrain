@@ -12,20 +12,18 @@ type Extractor = (texts: string[], opts: { pooling: 'mean'; normalize: boolean }
 let extractor: Promise<Extractor> | undefined;
 
 function load(): Promise<Extractor> {
-  // Dynamic import keeps onnxruntime-node out of hosted bundles.
-  extractor ??= import('@huggingface/transformers').then(
-    (m) => m.pipeline('feature-extraction', EMBED_MODEL) as unknown as Extractor,
-  );
+  // Dynamic import: only the requests that embed pay for loading ONNX.
+  extractor ??= import('@huggingface/transformers').then((m) => {
+    // A Vercel function can only write to /tmp; the model downloads there on a cold start.
+    if (process.env.VERCEL) m.env.cacheDir = '/tmp/transformers';
+    return m.pipeline('feature-extraction', EMBED_MODEL) as unknown as Extractor;
+  });
   return extractor;
 }
 
 function provider(): 'local' | 'hf' {
-  const prod = process.env.NODE_ENV === 'production' || Boolean(process.env.VERCEL);
   const p = process.env.EMBED_PROVIDER ?? (process.env.HF_TOKEN ? 'hf' : 'local');
   if (p !== 'local' && p !== 'hf') throw new Error(`EMBED_PROVIDER must be "local" or "hf", got "${p}"`);
-  if (prod && p !== 'hf') {
-    throw new Error('Embeddings need EMBED_PROVIDER=hf and HF_TOKEN in production; local ONNX is not available here.');
-  }
   if (p === 'hf' && !process.env.HF_TOKEN) throw new Error('EMBED_PROVIDER=hf requires HF_TOKEN.');
   return p;
 }

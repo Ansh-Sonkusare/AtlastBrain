@@ -169,7 +169,7 @@ To use TigerGraph Cloud, set `TG_URL` to the instance URL and `TG_SECRET` to its
 - `local` runs `Xenova/all-MiniLM-L6-v2` in-process through `@huggingface/transformers`.
 - `hf` calls the Hugging Face Inference router. It needs `HF_TOKEN` with the "Inference Providers" permission.
 
-With `EMBED_PROVIDER` empty, the provider is `hf` when `HF_TOKEN` is set and `local` otherwise. A production build or a Vercel deployment throws unless the provider is `hf`.
+With `EMBED_PROVIDER` empty, the provider is `hf` when `HF_TOKEN` is set and `local` otherwise. `local` also runs on Vercel: the function ships ONNX for Linux x64 and downloads the model to `/tmp` on a cold start, so it needs no credits.
 
 ## LLM profiles and the cost guard
 

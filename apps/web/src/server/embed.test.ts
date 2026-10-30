@@ -66,13 +66,4 @@ describe('embed hf provider (stubbed fetch)', () => {
     vi.stubGlobal('fetch', vi.fn(async () => ok([vec(10)])));
     await expect(embed(['a'])).rejects.toThrow(/384/);
   });
-
-  it('refuses local in production', async () => {
-    vi.stubEnv('EMBED_PROVIDER', 'local');
-    vi.stubEnv('VERCEL', '1');
-    await expect(embed(['a'])).rejects.toThrow(/production/);
-    vi.stubEnv('EMBED_PROVIDER', '');
-    vi.stubEnv('HF_TOKEN', '');
-    await expect(embed(['a'])).rejects.toThrow();
-  });
 });

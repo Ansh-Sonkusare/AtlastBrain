@@ -231,6 +231,8 @@ describe('createCheckout', () => {
   });
 });
 
+vi.mock('next/server', () => ({ after: vi.fn() }));
+
 describe('webhook route', () => {
   it('verifies the signature, applies the event, and rejects a bad one', async () => {
     vi.stubEnv('DODO_PAYMENTS_WEBHOOK_KEY', SECRET);

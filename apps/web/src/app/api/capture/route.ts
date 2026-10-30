@@ -1,7 +1,9 @@
+import { after } from 'next/server';
 import { createCheckout } from '../../../server/billing/dodo';
 import { withBillingLock } from '../../../server/billing/lock';
 import { decideSave } from '../../../server/billing/quota';
 import { capture } from '../../../server/pipeline/capture';
+import { processSource } from '../../../server/pipeline/process';
 import { CapturePayload } from '../../../server/types';
 import { ensureAccount } from '../../../server/auth/identity';
 import { json, OPTIONS, withUser } from '../_lib/http';
@@ -21,7 +23,15 @@ export const POST = withUser(async ({ request, userId, deps }) => {
       admit: async () => ((await decideSave(deps.graph, userId, deps.now())) === 'blocked' ? 'blocked' : 'pending'),
     }),
   );
-  if (source.status !== 'blocked') return json({ sourceId: source.id, status: source.status }, 202);
+  if (source.status !== 'blocked') {
+    // ponytail: a function killed mid-save leaves the source `processing`; requeueStuck needs a cron if that shows up.
+    after(() =>
+      processSource(deps, userId, source.id, { markRead: true }).catch((err) =>
+        console.error(`capture: source ${source.id} failed:`, err),
+      ),
+    );
+    return json({ sourceId: source.id, status: source.status }, 202);
+  }
   const checkoutUrl = await createCheckout(deps.graph, user, 'pro');
   return json({ sourceId: source.id, status: 'blocked', checkoutUrl, reason: 'quota' }, 202);
 });
